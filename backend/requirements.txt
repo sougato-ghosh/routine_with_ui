@@ -1,0 +1,7 @@
+pandas
+ortools
+fastapi
+uvicorn
+beautifulsoup4
+sqlalchemy
+python-multipart

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+backend/__pycache__/
+backend/*.log
+backend/output/
+
+# IDE files
+.idea/
+.vscode/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/node_modules/
+
+# Logs
+*.log
