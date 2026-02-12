@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, init_db, get_db
 from models import (
     Teacher, Room, Class, Subject, Timeslot, Curriculum,
-    TeacherUnavailability, TeacherPreference, SubjectOfAllSemester, Setting
+    TeacherUnavailability, TeacherPreference, SubjectOfAllSemester, Setting, Term
 )
 
 app = FastAPI()
@@ -42,7 +42,8 @@ MODEL_MAP = {
     "curriculum.csv": Curriculum,
     "teacher_unavailability.csv": TeacherUnavailability,
     "teacher_preferences.csv": TeacherPreference,
-    "subjects_of_all_semester.csv": SubjectOfAllSemester
+    "subjects_of_all_semester.csv": SubjectOfAllSemester,
+    "terms.csv": Term
 }
 
 def to_dict(obj):
