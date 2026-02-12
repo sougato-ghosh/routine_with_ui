@@ -3,10 +3,12 @@ import Sidebar from './Sidebar';
 
 function Layout({ children, currentTab, setCurrentTab }) {
   return (
-    <div className="flex min-h-screen bg-slate-50 font-inter">
+    <div className="flex min-h-screen bg-background-light text-slate-900 transition-colors duration-200">
       <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
-      <main className="ml-64 flex-1 p-8">
-        {children}
+      <main className="ml-64 flex-1 p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

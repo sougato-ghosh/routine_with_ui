@@ -87,3 +87,10 @@ class Setting(Base):
     user_id = Column(String, default="default_user")
     key = Column(String, unique=True, nullable=False)
     value = Column(String)
+
+class Term(Base):
+    __tablename__ = 'terms'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, default="default_user")
+    name = Column(String, unique=True, nullable=False) # e.g. "1-1", "1-2"
+    is_active = Column(Boolean, default=True)

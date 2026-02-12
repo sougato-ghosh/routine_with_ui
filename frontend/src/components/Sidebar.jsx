@@ -1,46 +1,54 @@
 import React from 'react';
-import { LayoutDashboard, Database, Zap, Calendar } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '../utils';
 
 const menuItems = [
-  { name: 'Overview', icon: LayoutDashboard },
-  { name: 'Data Studio', icon: Database },
-  { name: 'Generator', icon: Zap },
-  { name: 'Schedules', icon: Calendar },
+  { name: 'Overview', icon: 'grid_view', type: 'material' },
+  { name: 'Teachers', icon: 'person', type: 'symbol' },
+  { name: 'Rooms', icon: 'meeting_room', type: 'material' },
+  { name: 'Data Studio', icon: 'storage', type: 'material' },
+  { name: 'Generator', icon: 'bolt', type: 'material' },
+  { name: 'Schedules', icon: 'calendar_today', type: 'material' },
 ];
 
 function Sidebar({ currentTab, setCurrentTab }) {
   return (
-    <div className="w-64 bg-white border-r border-slate-200 h-screen flex flex-col fixed left-0 top-0">
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <span role="img" aria-label="grad-cap">🎓</span>
-          Cadence
-        </h1>
+    <aside className="w-64 bg-sidebar-light border-r border-slate-200 flex flex-col fixed top-0 h-screen z-40">
+      <div className="p-6 flex items-center gap-2">
+        <span className="material-icons text-primary text-3xl">school</span>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Cadence</h1>
       </div>
-      <nav className="flex-1 px-4 space-y-2">
+      <nav className="flex-1 px-4 space-y-2 mt-4">
         {menuItems.map((item) => (
           <button
             key={item.name}
             onClick={() => setCurrentTab(item.name)}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors",
+              "flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all font-medium",
               currentTab === item.name
-                ? "bg-blue-600 text-white"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                ? "active-sidebar-item"
+                : "text-slate-600 hover:bg-slate-50"
             )}
           >
-            <item.icon size={18} />
-            {item.name}
+            <span className={cn(
+              item.type === 'symbol' ? "material-symbols-outlined" : "material-icons",
+              "text-[22px]"
+            )}>
+              {item.icon}
+            </span>
+            <span>{item.name}</span>
           </button>
         ))}
       </nav>
-    </div>
+      <div className="p-4 border-t border-slate-200">
+        <button
+          className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
+          onClick={() => document.documentElement.classList.toggle('dark')}
+        >
+          <span className="material-icons">dark_mode</span>
+          <span className="font-medium text-sm">Toggle Theme</span>
+        </button>
+      </div>
+    </aside>
   );
 }
 
