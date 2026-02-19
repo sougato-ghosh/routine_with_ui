@@ -1,22 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import { getData } from '../api';
+import React, { useState, useEffect, useRef } from 'react';
+import { getData, updateData, importCSV, exportCSV } from '../api';
 import { cn } from '../utils';
+import { DEPARTMENTS } from '../constants';
 import TeacherProfile from './TeacherProfile';
 
 function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTeacher, setNewTeacher] = useState({
+    teacher_id: '',
+    name: '',
+    department: 'ME',
+    seniority: 1,
+    max_load_day: 6,
+    max_load_week: 30
+  });
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  const fetchTeachers = () => {
+    setLoading(true);
     getData('teachers.csv').then(res => {
       setTeachers(res.data);
       setLoading(false);
     });
-  }, []);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        await importCSV('teachers.csv', file);
+        fetchTeachers();
+        alert('Teachers imported successfully');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to import teachers');
+      }
+    }
+  };
+
+  const handleExport = () => {
+    exportCSV('teachers.csv');
+  };
+
+  const handleAddTeacher = async (e) => {
+    e.preventDefault();
+    try {
+      await updateData('teachers.csv', [...teachers, newTeacher]);
+      setIsModalOpen(false);
+      setNewTeacher({
+        teacher_id: '',
+        name: '',
+        department: 'ME',
+        seniority: 1,
+        max_load_day: 6,
+        max_load_week: 30
+      });
+      fetchTeachers();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add teacher');
+    }
+  };
 
   if (selectedTeacher) {
-    return <TeacherProfile teacher={selectedTeacher} onBack={() => setSelectedTeacher(null)} />;
+    return <TeacherProfile teacher={selectedTeacher} onBack={() => { setSelectedTeacher(null); fetchTeachers(); }} />;
   }
 
   return (
@@ -33,11 +91,31 @@ function Teachers() {
             <p className="text-sm text-slate-500 mt-1">Total: {teachers.length} Active Faculty Members</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".csv"
+              className="hidden"
+            />
+            <button
+              onClick={handleImportClick}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+            >
               <span className="material-symbols-outlined text-base">file_upload</span>
               Import CSV
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:opacity-90 transition-opacity shadow-sm">
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">file_download</span>
+              Export CSV
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:opacity-90 transition-opacity shadow-sm"
+            >
               <span className="material-symbols-outlined text-base">person_add</span>
               Add Teacher
             </button>
@@ -66,6 +144,9 @@ function Teachers() {
                       <div className="flex items-center gap-3 mb-1">
                         <h3 className="text-lg font-bold text-slate-900">{teacher.name}</h3>
                         <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-black tracking-wider uppercase">
+                          {teacher.department || 'N/A'}
+                        </span>
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black tracking-wider uppercase">
                           Seniority {teacher.seniority}
                         </span>
                       </div>
@@ -85,6 +166,115 @@ function Teachers() {
           )}
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900">Add New Teacher</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleAddTeacher} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="teacher_id" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Teacher ID</label>
+                  <input
+                    id="teacher_id"
+                    required
+                    type="text"
+                    value={newTeacher.teacher_id}
+                    onChange={e => setNewTeacher({...newTeacher, teacher_id: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    placeholder="e.g. T001"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="seniority" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Seniority</label>
+                  <input
+                    id="seniority"
+                    required
+                    type="number"
+                    min="1"
+                    value={newTeacher.seniority}
+                    onChange={e => setNewTeacher({...newTeacher, seniority: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
+                <input
+                  id="name"
+                  required
+                  type="text"
+                  value={newTeacher.name}
+                  onChange={e => setNewTeacher({...newTeacher, name: e.target.value})}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  placeholder="e.g. Dr. John Doe"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="department" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                <select
+                  id="department"
+                  value={newTeacher.department}
+                  onChange={e => setNewTeacher({...newTeacher, department: e.target.value})}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
+                >
+                  {DEPARTMENTS.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="space-y-1">
+                  <label htmlFor="max_load_day" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Max Load/Day</label>
+                  <input
+                    id="max_load_day"
+                    required
+                    type="number"
+                    value={newTeacher.max_load_day}
+                    onChange={e => setNewTeacher({...newTeacher, max_load_day: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="max_load_week" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Max Load/Week</label>
+                  <input
+                    id="max_load_week"
+                    required
+                    type="number"
+                    value={newTeacher.max_load_week}
+                    onChange={e => setNewTeacher({...newTeacher, max_load_week: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
+                >
+                  Save Teacher
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ class Teacher(Base):
     user_id = Column(String, default="default_user")
     teacher_id = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
+    department = Column(String, nullable=False, default="ME")
     seniority = Column(Integer, default=1)
     max_load_day = Column(Integer, default=6)
     max_load_week = Column(Integer, default=30)
