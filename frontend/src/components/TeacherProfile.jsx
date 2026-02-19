@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getData, updateData } from '../api';
 import { cn } from '../utils';
+import { DEPARTMENTS } from '../constants';
 
-function TeacherProfile({ teacher, onBack }) {
+function TeacherProfile({ teacher: initialTeacher, onBack }) {
+  const [teacher, setTeacher] = useState(initialTeacher);
   const [unavailability, setUnavailability] = useState([]);
   const [preferences, setPreferences] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ function TeacherProfile({ teacher, onBack }) {
 
   useEffect(() => {
     loadConstraints();
-  }, [teacher.teacher_id]);
+  }, [initialTeacher.teacher_id]);
 
   const loadConstraints = async () => {
     const [unavailRes, prefRes] = await Promise.all([
@@ -22,26 +24,33 @@ function TeacherProfile({ teacher, onBack }) {
     setLoading(false);
   };
 
-  const handleSaveConstraints = async () => {
+  const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      // We need to fetch ALL data first to not overwrite others
-      const [allUnavail, allPref] = await Promise.all([
+      // Fetch all to update teacher and constraints
+      const [allTeachers, allUnavail, allPref] = await Promise.all([
+        getData('teachers.csv'),
         getData('teacher_unavailability.csv'),
         getData('teacher_preferences.csv')
       ]);
 
-      const otherUnavail = allUnavail.data.filter(u => u.teacher_id !== teacher.teacher_id);
-      const otherPref = allPref.data.filter(p => p.teacher_id !== teacher.teacher_id);
+      const otherTeachers = allTeachers.data.filter(t => t.teacher_id !== initialTeacher.teacher_id);
+      const otherUnavail = allUnavail.data.filter(u => u.teacher_id !== initialTeacher.teacher_id);
+      const otherPref = allPref.data.filter(p => p.teacher_id !== initialTeacher.teacher_id);
+
+      // We need to make sure unavailability and preferences use the potentially new teacher_id
+      const updatedUnavail = unavailability.map(u => ({ ...u, teacher_id: teacher.teacher_id }));
+      const updatedPref = preferences.map(p => ({ ...p, teacher_id: teacher.teacher_id }));
 
       await Promise.all([
-        updateData('teacher_unavailability.csv', [...otherUnavail, ...unavailability]),
-        updateData('teacher_preferences.csv', [...otherPref, ...preferences])
+        updateData('teachers.csv', [...otherTeachers, teacher]),
+        updateData('teacher_unavailability.csv', [...otherUnavail, ...updatedUnavail]),
+        updateData('teacher_preferences.csv', [...otherPref, ...updatedPref])
       ]);
-      alert("Constraints saved!");
+      alert("Profile and constraints saved!");
     } catch (err) {
       console.error(err);
-      alert("Failed to save constraints");
+      alert("Failed to save profile");
     } finally {
       setSaving(false);
     }
@@ -86,7 +95,7 @@ function TeacherProfile({ teacher, onBack }) {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleSaveConstraints}
+            onClick={handleSaveProfile}
             disabled={saving}
             className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-primary/90 transition-all shadow-md disabled:opacity-50"
           >
@@ -106,17 +115,72 @@ function TeacherProfile({ teacher, onBack }) {
                 </div>
                 <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-white"></div>
               </div>
-              <div className="text-center md:text-left flex-1">
-                <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-4 mb-2">
-                  <h2 className="text-3xl font-extrabold">{teacher.name}</h2>
-                  <span className="bg-primary/10 text-primary text-xs font-bold uppercase px-3 py-1 rounded-full mb-1">
-                    Seniority {teacher.seniority}
-                  </span>
+              <div className="text-center md:text-left flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={teacher.name}
+                      onChange={e => setTeacher({...teacher, name: e.target.value})}
+                      className="text-2xl font-extrabold bg-transparent border-b border-transparent hover:border-slate-200 focus:border-primary focus:outline-none w-full"
+                    />
+                  </div>
+                  <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <span className="material-icons text-primary text-lg">badge</span>
+                      <input
+                        type="text"
+                        value={teacher.teacher_id}
+                        onChange={e => setTeacher({...teacher, teacher_id: e.target.value})}
+                        className="bg-transparent border-b border-transparent hover:border-slate-200 focus:border-primary focus:outline-none w-24"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <span className="material-icons text-primary text-lg">badge</span>
-                    <span>ID: {teacher.teacher_id}</span>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Department</label>
+                      <select
+                        value={teacher.department || 'ME'}
+                        onChange={e => setTeacher({...teacher, department: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      >
+                        {DEPARTMENTS.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Seniority</label>
+                      <input
+                        type="number"
+                        value={teacher.seniority}
+                        onChange={e => setTeacher({...teacher, seniority: parseInt(e.target.value)})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Max Load/Day</label>
+                      <input
+                        type="number"
+                        value={teacher.max_load_day}
+                        onChange={e => setTeacher({...teacher, max_load_day: parseInt(e.target.value)})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Max Load/Week</label>
+                      <input
+                        type="number"
+                        value={teacher.max_load_week}
+                        onChange={e => setTeacher({...teacher, max_load_week: parseInt(e.target.value)})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
