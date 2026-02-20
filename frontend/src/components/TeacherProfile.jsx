@@ -56,6 +56,33 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
     }
   };
 
+  const handleDeleteProfile = async () => {
+    setSaving(true);
+    try {
+      const [allTeachers, allUnavail, allPref] = await Promise.all([
+        getData('teachers.csv'),
+        getData('teacher_unavailability.csv'),
+        getData('teacher_preferences.csv')
+      ]);
+
+      const otherTeachers = allTeachers.data.filter(t => t.teacher_id !== initialTeacher.teacher_id);
+      const otherUnavail = allUnavail.data.filter(u => u.teacher_id !== initialTeacher.teacher_id);
+      const otherPref = allPref.data.filter(p => p.teacher_id !== initialTeacher.teacher_id);
+
+      await Promise.all([
+        updateData('teachers.csv', otherTeachers),
+        updateData('teacher_unavailability.csv', otherUnavail),
+        updateData('teacher_preferences.csv', otherPref)
+      ]);
+      onBack();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const addUnavailability = () => {
     setUnavailability([...unavailability, { teacher_id: teacher.teacher_id, day: 1, period: 1 }]);
   };
@@ -94,6 +121,14 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
           <h1 className="text-xl font-bold">Teacher Profile</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleDeleteProfile}
+            disabled={saving}
+            className="flex items-center gap-2 bg-red-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-red-600 transition-all shadow-md disabled:opacity-50"
+          >
+            <span className="material-icons text-sm">delete</span>
+            {saving ? 'Deleting...' : 'Delete Profile'}
+          </button>
           <button
             onClick={handleSaveProfile}
             disabled={saving}

@@ -7,6 +7,7 @@ import TeacherProfile from './TeacherProfile';
 function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTeacher, setNewTeacher] = useState({
@@ -51,6 +52,33 @@ function Teachers() {
 
   const handleExport = () => {
     exportCSV('teachers.csv');
+  };
+
+  const handleDeleteTeachers = async (idsToDelete) => {
+    try {
+      setLoading(true);
+      const [unavailRes, prefRes] = await Promise.all([
+        getData('teacher_unavailability.csv'),
+        getData('teacher_preferences.csv')
+      ]);
+
+      const updatedTeachers = teachers.filter(t => !idsToDelete.includes(t.teacher_id));
+      const updatedUnavail = unavailRes.data.filter(u => !idsToDelete.includes(u.teacher_id));
+      const updatedPref = prefRes.data.filter(p => !idsToDelete.includes(p.teacher_id));
+
+      await Promise.all([
+        updateData('teachers.csv', updatedTeachers),
+        updateData('teacher_unavailability.csv', updatedUnavail),
+        updateData('teacher_preferences.csv', updatedPref)
+      ]);
+
+      setSelectedIds(selectedIds.filter(id => !idsToDelete.includes(id)));
+      fetchTeachers();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete teachers');
+      setLoading(false);
+    }
   };
 
   const handleAddTeacher = async (e) => {
@@ -112,6 +140,15 @@ function Teachers() {
               <span className="material-symbols-outlined text-base">file_download</span>
               Export CSV
             </button>
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => handleDeleteTeachers(selectedIds)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+                Delete Selected ({selectedIds.length})
+              </button>
+            )}
             <button
               onClick={() => setIsModalOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:opacity-90 transition-opacity shadow-sm"
@@ -137,6 +174,19 @@ function Teachers() {
                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
                 <div className="px-6 py-5 flex items-center justify-between">
                   <div className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(teacher.teacher_id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds([...selectedIds, teacher.teacher_id]);
+                        } else {
+                          setSelectedIds(selectedIds.filter(id => id !== teacher.teacher_id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                    />
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                       {teacher.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
@@ -159,7 +209,19 @@ function Teachers() {
                       </div>
                     </div>
                   </div>
-                  <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTeachers([teacher.teacher_id]);
+                      }}
+                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                      title="Delete Teacher"
+                    >
+                      <span className="material-symbols-outlined">delete</span>
+                    </button>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+                  </div>
                 </div>
               </button>
             ))
