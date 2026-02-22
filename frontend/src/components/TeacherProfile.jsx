@@ -107,7 +107,7 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
   const removePref = (index) => setPreferences(preferences.filter((_, i) => i !== index));
 
   return (
-    <div className="flex flex-col min-h-screen bg-background-light">
+    <div className="flex flex-col min-h-screen bg-background">
       <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button

@@ -13,7 +13,7 @@ const menuItems = [
 
 function Sidebar({ currentTab, setCurrentTab }) {
   return (
-    <aside className="w-64 bg-sidebar-light border-r border-slate-200 flex flex-col fixed top-0 h-screen z-40">
+    <aside className="w-64 bg-sidebar border-r border-slate-200 flex flex-col fixed top-0 h-screen z-40">
       <div className="p-6 flex items-center gap-2">
         <span className="material-icons text-primary text-3xl">school</span>
         <h1 className="text-2xl font-bold tracking-tight text-slate-800">Cadence</h1>
@@ -40,15 +40,6 @@ function Sidebar({ currentTab, setCurrentTab }) {
           </button>
         ))}
       </nav>
-      <div className="p-4 border-t border-slate-200">
-        <button
-          className="flex items-center gap-3 w-full px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
-          onClick={() => document.documentElement.classList.toggle('dark')}
-        >
-          <span className="material-icons">dark_mode</span>
-          <span className="font-medium text-sm">Toggle Theme</span>
-        </button>
-      </div>
     </aside>
   );
 }

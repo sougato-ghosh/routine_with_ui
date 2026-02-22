@@ -6,15 +6,13 @@
 
   --color-primary: #7c3aed;
   --color-primary-hover: #6d28d9;
-  --color-background-light: #f8fafc;
-  --color-background-dark: #0f172a;
-  --color-sidebar-light: #ffffff;
-  --color-sidebar-dark: #1e293b;
+  --color-background: #f8fafc;
+  --color-sidebar: #ffffff;
 }
 
 @layer base {
   body {
-    @apply font-inter antialiased bg-background-light text-slate-900 transition-colors duration-200;
+    @apply font-inter antialiased bg-background text-slate-900;
   }
 }
 
