@@ -4,6 +4,7 @@ import Overview from './components/Overview';
 import Teachers from './components/Teachers';
 import Rooms from './components/Rooms';
 import DataStudio from './components/DataStudio';
+import DataValidator from './components/DataValidator';
 import Generator from './components/Generator';
 import Schedules from './components/Schedules';
 
@@ -20,6 +21,8 @@ function App() {
         return <Rooms />;
       case 'Data Studio':
         return <DataStudio />;
+      case 'Data Validator':
+        return <DataValidator />;
       case 'Generator':
         return <Generator />;
       case 'Schedules':

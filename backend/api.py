@@ -143,20 +143,18 @@ def update_settings(data: Dict[str, str], db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success"}
 
+@app.get("/validate")
+def validate_data():
+    issues = data_validator.validate_data()
+    return issues
+
 @app.post("/run-scheduler")
 def run_scheduler():
-    data_validator.main()
+    data_validator.validate_data()
     res = main.run()
 
-    warnings = ""
-    warning_path = os.path.join(BASE_DIR, "warnings.log")
-    if os.path.exists(warning_path):
-        with open(warning_path, "r") as f:
-            warnings = f.read()
-
     return {
-        "result": res,
-        "warnings": warnings
+        "result": res
     }
 
 @app.get("/schedules")

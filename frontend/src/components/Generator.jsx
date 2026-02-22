@@ -4,14 +4,12 @@ import { runScheduler } from '../api';
 function Generator() {
   const [status, setStatus] = useState('idle'); // idle, running, complete, error
   const [result, setResult] = useState(null);
-  const [warnings, setWarnings] = useState('');
 
   const handleRun = () => {
     setStatus('running');
     runScheduler()
       .then(res => {
         setResult(res.data.result);
-        setWarnings(res.data.warnings);
         if (res.data.result.status.startsWith('ERROR')) {
           setStatus('error');
         } else {
@@ -79,22 +77,6 @@ function Generator() {
               <div>
                 <h4 className="font-bold text-red-900">Generation Failed</h4>
                 <p className="text-red-700 text-sm">{result?.status}</p>
-              </div>
-            </div>
-          )}
-
-          {warnings && (
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                <span className="material-icons text-amber-500">warning</span>
-                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">
-                  Validation Log
-                </h4>
-              </div>
-              <div className="p-6">
-                <pre className="text-xs font-mono text-slate-600 bg-slate-50 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap border border-slate-100">
-                  {warnings}
-                </pre>
               </div>
             </div>
           )}
