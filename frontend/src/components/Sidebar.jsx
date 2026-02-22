@@ -6,6 +6,7 @@ const menuItems = [
   { name: 'Teachers', icon: 'person', type: 'symbol' },
   { name: 'Rooms', icon: 'meeting_room', type: 'material' },
   { name: 'Data Studio', icon: 'storage', type: 'material' },
+  { name: 'Data Validator', icon: 'fact_check', type: 'material' },
   { name: 'Generator', icon: 'bolt', type: 'material' },
   { name: 'Schedules', icon: 'calendar_today', type: 'material' },
 ];

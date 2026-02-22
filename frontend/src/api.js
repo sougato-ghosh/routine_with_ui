@@ -9,6 +9,7 @@ const api = axios.create({
 export const getOverview = () => api.get('/overview');
 export const getData = (filename) => api.get(`/data/${filename}`);
 export const updateData = (filename, data) => api.post(`/data/${filename}`, data);
+export const validateData = () => api.get('/validate');
 export const runScheduler = () => api.post('/run-scheduler');
 export const getSchedules = () => api.get('/schedules');
 export const getSchedule = (filename) => api.get(`/schedules/${filename}`);
