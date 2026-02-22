@@ -209,19 +209,6 @@ function Teachers() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTeachers([teacher.teacher_id]);
-                      }}
-                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Delete Teacher"
-                    >
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
-                    <span className="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
-                  </div>
                 </div>
               </button>
             ))
