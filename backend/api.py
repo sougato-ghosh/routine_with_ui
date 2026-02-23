@@ -130,7 +130,7 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
 @app.get("/settings")
 def get_settings(db: Session = Depends(get_db)):
     settings = db.query(Setting).all()
-    return {s.key: s.value for s in settings}
+    return {s.key: s.value for s in settings if s.key != 'footer_right_text'}
 
 @app.post("/settings")
 def update_settings(data: Dict[str, str], db: Session = Depends(get_db)):
