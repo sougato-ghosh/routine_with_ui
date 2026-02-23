@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Layout from './components/Layout';
 import Overview from './components/Overview';
+import Settings from './components/Settings';
 import Teachers from './components/Teachers';
 import Rooms from './components/Rooms';
 import DataStudio from './components/DataStudio';
@@ -15,6 +16,8 @@ function App() {
     switch (currentTab) {
       case 'Overview':
         return <Overview />;
+      case 'Settings':
+        return <Settings />;
       case 'Teachers':
         return <Teachers />;
       case 'Rooms':
