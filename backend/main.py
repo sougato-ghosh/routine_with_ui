@@ -81,11 +81,11 @@ def write_csv(path: str, header: List[str], rows: List[List]):
 def load_settings(db: Session) -> Dict[str, str]:
     info = {
         'session_name': 'January 2025',
-        'footer_right_text': 'Cadence'
     }
     settings = db.query(Setting).all()
     for s in settings:
-        info[s.key] = s.value
+        if s.key != 'footer_right_text':
+            info[s.key] = s.value
     return info
 
 def load_teachers(db: Session) -> Dict[str, dict]:
@@ -555,7 +555,7 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
                     html += f"<td colspan='{colspan}'><span class='subject-id'>{s.subject_id}</span><div class='teacher-id'>{s.teacher_id}</div>{room_info_display}</td>"
                 else: html += "<td></td>"
             html += "</tr>"
-        html += f"</table><div class='footer clearfix'><div class='footer-left'>Timetable generated:{generated_time}</div><div class='footer-right'>{info.get('footer_right_text', '') or 'Cadence'}</div></div></body></html>"
+        html += f"</table><div class='footer clearfix'><div class='footer-left'>Timetable generated:{generated_time}</div><div class='footer-right'>Cadence</div></div></body></html>"
         with open(os.path.join(OUT_DIR, f'class_{class_id}_timetable.html'), 'w', encoding='utf-8') as f: f.write(html)
 
     for teacher_id, tinfo in teachers.items():
@@ -590,7 +590,7 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
                     html += f"<td colspan='{colspan}'><span class='subject-id'>{s.subject_id}</span><div class='teacher-id'>{s.class_id}</div><div class='room-info'>{formatted_room}</div></td>"
                 else: html += "<td></td>"
             html += "</tr>"
-        html += f"</table><div class='footer clearfix'><div class='footer-left'>Timetable generated:{generated_time}</div><div class='footer-right'>{info.get('footer_right_text', '') or 'Cadence'}</div></div></body></html>"
+        html += f"</table><div class='footer clearfix'><div class='footer-left'>Timetable generated:{generated_time}</div><div class='footer-right'>Cadence</div></div></body></html>"
         with open(os.path.join(OUT_DIR, f'teacher_{teacher_id}_timetable.html'), 'w', encoding='utf-8') as f: f.write(html)
 
     combined_rows = [['session_id', 'class', 'subject', 'teacher', 'day', 'period', 'room']]

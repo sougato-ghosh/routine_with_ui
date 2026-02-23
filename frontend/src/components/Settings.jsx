@@ -85,19 +85,21 @@ function Settings() {
             </div>
           ) : (
             <div className="max-w-md space-y-6">
-              {Object.keys(settings).map(key => (
-                <div key={key}>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    {key.replace(/_/g, ' ')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
-                    value={settings[key] || ''}
-                    onChange={(e) => handleEdit(key, e.target.value)}
-                  />
-                </div>
-              ))}
+              {Object.keys(settings)
+                .filter(key => key !== 'footer_right_text')
+                .map(key => (
+                  <div key={key}>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                      {key.replace(/_/g, ' ')}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                      value={settings[key] || ''}
+                      onChange={(e) => handleEdit(key, e.target.value)}
+                    />
+                  </div>
+                ))}
             </div>
           )}
         </div>
