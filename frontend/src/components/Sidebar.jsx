@@ -3,6 +3,7 @@ import { cn } from '../utils';
 
 const menuItems = [
   { name: 'Overview', icon: 'grid_view', type: 'material' },
+  { name: 'Settings', icon: 'settings', type: 'material' },
   { name: 'Teachers', icon: 'person', type: 'symbol' },
   { name: 'Rooms', icon: 'meeting_room', type: 'material' },
   { name: 'Data Studio', icon: 'storage', type: 'material' },

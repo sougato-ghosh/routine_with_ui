@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getData, updateData, getSettings, updateSettings } from '../api';
+import { getData, updateData } from '../api';
 import { Check } from 'lucide-react';
 import { cn } from '../utils';
 
-import SettingsTab from './datastudio/SettingsTab';
 import TermDetailsTab from './datastudio/TermDetailsTab';
 import CourseDetailsTab from './datastudio/CourseDetailsTab';
 import ClassesTab from './datastudio/ClassesTab';
 import ClassAllotmentTab from './datastudio/ClassAllotmentTab';
 
 const TABS = [
-  { id: 'settings', name: 'Settings' },
   { id: 'terms', name: 'Term Details' },
   { id: 'courses', name: 'Course Details' },
   { id: 'classes', name: 'Classes' },
@@ -18,8 +16,7 @@ const TABS = [
 ];
 
 function DataStudio() {
-  const [activeTab, setActiveTab] = useState('settings');
-  const [settings, setSettings] = useState({});
+  const [activeTab, setActiveTab] = useState('terms');
   const [activeTerms, setActiveTerms] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -38,10 +35,7 @@ function DataStudio() {
   const loadData = async () => {
     setLoading(true);
     try {
-      if (activeTab === 'settings') {
-        const res = await getSettings();
-        setSettings(res.data);
-      } else if (activeTab === 'terms') {
+      if (activeTab === 'terms') {
         const res = await getData('terms.csv');
         setActiveTerms(res.data.filter(t => t.is_active).map(t => t.name));
       } else if (activeTab === 'courses') {
@@ -77,16 +71,6 @@ function DataStudio() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSaveSettings = async () => {
-    setSaving(true);
-    try {
-      await updateSettings(settings);
-      showToast("Settings Saved!");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleToggleTerm = (termName) => {
     setActiveTerms(prev =>
       prev.includes(termName)
@@ -111,15 +95,6 @@ function DataStudio() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'settings':
-        return (
-          <SettingsTab
-            settings={settings}
-            onEdit={(k, v) => setSettings(p => ({ ...p, [k]: v }))}
-            onSave={handleSaveSettings}
-            saving={saving}
-          />
-        );
       case 'terms':
         return (
           <TermDetailsTab
