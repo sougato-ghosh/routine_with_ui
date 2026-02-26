@@ -101,6 +101,11 @@ def update_data(filename: str, data: List[Dict[Any, Any]], db: Session = Depends
 
     # Simple strategy: clear and replace
     db.query(model).delete()
+
+    # If terms are updated, also clear curriculum
+    if filename == "terms.csv":
+        db.query(Curriculum).delete()
+
     for item in data:
         db.add(model(**item, user_id="default_user"))
     db.commit()
@@ -143,6 +148,19 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
 
     # Clear and replace
     db.query(model).delete()
+
+    # If curriculum is imported, filter by active terms
+    if filename == "curriculum.csv":
+        active_terms = db.query(Term).filter(Term.is_active == True).all()
+        active_codes = [t.name.replace('-', '') for t in active_terms]
+
+        def is_active(row):
+            cid = str(row.get('class_id', ''))
+            return any(cid.startswith(code) for code in active_codes)
+
+        mask = df.apply(is_active, axis=1)
+        df = df[mask]
+
     for _, row in df.iterrows():
         # Clean row data (remove NaNs)
         item_data = row.to_dict()

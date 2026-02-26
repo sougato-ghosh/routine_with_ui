@@ -91,7 +91,7 @@ function DataStudio() {
   };
 
   const handleSaveTerms = async () => {
-    const confirmed = window.confirm("Are you sure you want to update the active terms? This will affect which terms are visible in Course Details and Classes.");
+    const confirmed = window.confirm("Are you sure you want to update the active terms? This will ERASE ALL current class allotments (curriculum data) and affect which terms are visible in Course Details and Classes. This action cannot be undone.");
     if (!confirmed) return;
 
     setSaving(true);
