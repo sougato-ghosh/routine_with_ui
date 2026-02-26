@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getData, updateData, importCSV, exportCSV } from '../../api';
+import { getData, updateData, importCSV, exportCSV, getSettings } from '../../api';
 import { cn } from '../../utils';
-
-const DEPARTMENTS = ["ME", "CHEM", "CHE", "EEE", "CSE", "CE", "IPE", "MME", "WRE", "Math", "Physics", "Hum"];
 
 function CourseDetailsTab({ activeTerms = [] }) {
   const [selectedTerm, setSelectedTerm] = useState('All');
   const [subjects, setSubjects] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]); // Uses `${class_id}-${subject_id}`
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,8 +27,30 @@ function CourseDetailsTab({ activeTerms = [] }) {
   const filteredTerms = terms.filter(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
   useEffect(() => {
-    fetchSubjects();
+    fetchInitialData();
   }, []);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      const [subjectsRes, settingsRes] = await Promise.all([
+        getData('subjects.csv'),
+        getSettings()
+      ]);
+      setSubjects(subjectsRes.data);
+      if (settingsRes.data.departments) {
+        const depts = settingsRes.data.departments.split(',').map(s => s.trim());
+        setDepartments(depts);
+        if (depts.length > 0) {
+          setNewSubject(prev => ({ ...prev, dept: depts[0] }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch initial data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchSubjects = () => {
     setLoading(true);
@@ -85,7 +106,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
       setNewSubject({
         class_id: '',
         subject_id: '',
-        dept: 'ME',
+        dept: departments[0] || 'ME',
         name: '',
         duration: 1,
         required_room_type: 'Theory',
@@ -300,7 +321,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
                     onChange={e => setNewSubject({...newSubject, dept: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
                   >
-                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>

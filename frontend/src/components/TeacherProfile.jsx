@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getData, updateData, getSettings } from '../api';
 import { cn } from '../utils';
-import { DEPARTMENTS } from '../constants';
 
 function TeacherProfile({ teacher: initialTeacher, onBack }) {
   const [teacher, setTeacher] = useState(initialTeacher);
   const [unavailability, setUnavailability] = useState([]);
   const [preferences, setPreferences] = useState([]);
   const [seniorityLevels, setSeniorityLevels] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -25,6 +25,9 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
     setPreferences(prefRes.data.filter(p => p.teacher_id === teacher.teacher_id));
     if (settingsRes.data.seniority_levels) {
       setSeniorityLevels(settingsRes.data.seniority_levels.split(',').map(s => s.trim()));
+    }
+    if (settingsRes.data.departments) {
+      setDepartments(settingsRes.data.departments.split(',').map(s => s.trim()));
     }
     setLoading(false);
   };
@@ -183,11 +186,11 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Department</label>
                       <select
-                        value={teacher.department || 'ME'}
+                        value={teacher.department || (departments[0] || 'ME')}
                         onChange={e => setTeacher({...teacher, department: e.target.value})}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        {DEPARTMENTS.map(dept => (
+                        {departments.map(dept => (
                           <option key={dept} value={dept}>{dept}</option>
                         ))}
                       </select>

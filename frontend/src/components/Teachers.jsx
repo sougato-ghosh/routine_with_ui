@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getData, updateData, importCSV, exportCSV, getSettings } from '../api';
 import { cn } from '../utils';
-import { DEPARTMENTS } from '../constants';
 import TeacherProfile from './TeacherProfile';
 
 function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [seniorityLevels, setSeniorityLevels] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,13 @@ function Teachers() {
       setTeachers(teachersRes.data);
       if (settingsRes.data.seniority_levels) {
         setSeniorityLevels(settingsRes.data.seniority_levels.split(',').map(s => s.trim()));
+      }
+      if (settingsRes.data.departments) {
+        const depts = settingsRes.data.departments.split(',').map(s => s.trim());
+        setDepartments(depts);
+        if (depts.length > 0) {
+          setNewTeacher(prev => ({ ...prev, department: depts[0] }));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch initial data", err);
@@ -116,7 +123,7 @@ function Teachers() {
       setNewTeacher({
         teacher_id: '',
         name: '',
-        department: 'ME',
+        department: departments[0] || 'ME',
         seniority: 1,
         max_load_day: 6,
         max_load_week: 30
@@ -307,7 +314,7 @@ function Teachers() {
                   onChange={e => setNewTeacher({...newTeacher, department: e.target.value})}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
                 >
-                  {DEPARTMENTS.map(dept => (
+                  {departments.map(dept => (
                     <option key={dept} value={dept}>{dept}</option>
                   ))}
                 </select>
