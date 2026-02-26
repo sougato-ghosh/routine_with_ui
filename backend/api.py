@@ -13,7 +13,7 @@ import json
 from sqlalchemy.orm import Session
 from database import SessionLocal, init_db, get_db
 from models import (
-    Teacher, Room, Class, Subject, Timeslot, Curriculum,
+    Teacher, Room, Class, Subject, Curriculum,
     TeacherUnavailability, TeacherPreference, SubjectOfAllSemester, Setting, Term
 )
 
@@ -33,12 +33,35 @@ OUT_DIR = os.path.join(BASE_DIR, "output")
 # Initialize DB on startup
 init_db()
 
+def ensure_default_settings():
+    db = SessionLocal()
+    try:
+        defaults = {
+            "days_num": "5",
+            "periods_num": "9",
+            "break_period": "6",
+            "theory_allowed_periods": "1,2,3,4,5",
+            "lab_allowed_periods": "1,4,7",
+            "day_labels": "Sa,Su,Mo,Tu,We",
+            "period_labels": "1st,2nd,3rd,4th,5th,6th,7th,8th,9th",
+            "period_times": "8:00-8:50,9:00-9:50,10:00-10:50,11:00-11:50,12:00-12:50,1:00-1:30,2:00-2:50,3:00-3:50,4:00-4:50",
+            "break_time_label": "1:30 - 2:00"
+        }
+        for k, v in defaults.items():
+            exists = db.query(Setting).filter(Setting.key == k).first()
+            if not exists:
+                db.add(Setting(key=k, value=v, user_id="default_user"))
+        db.commit()
+    finally:
+        db.close()
+
+ensure_default_settings()
+
 MODEL_MAP = {
     "teachers.csv": Teacher,
     "rooms.csv": Room,
     "classes.csv": Class,
     "subjects.csv": Subject,
-    "timeslots.csv": Timeslot,
     "curriculum.csv": Curriculum,
     "teacher_unavailability.csv": TeacherUnavailability,
     "teacher_preferences.csv": TeacherPreference,
