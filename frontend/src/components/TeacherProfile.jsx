@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getData, updateData } from '../api';
+import { getData, updateData, getSettings } from '../api';
 import { cn } from '../utils';
 import { DEPARTMENTS } from '../constants';
 
@@ -7,20 +7,25 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
   const [teacher, setTeacher] = useState(initialTeacher);
   const [unavailability, setUnavailability] = useState([]);
   const [preferences, setPreferences] = useState([]);
+  const [seniorityLevels, setSeniorityLevels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    loadConstraints();
+    loadData();
   }, [initialTeacher.teacher_id]);
 
-  const loadConstraints = async () => {
-    const [unavailRes, prefRes] = await Promise.all([
+  const loadData = async () => {
+    const [unavailRes, prefRes, settingsRes] = await Promise.all([
       getData('teacher_unavailability.csv'),
-      getData('teacher_preferences.csv')
+      getData('teacher_preferences.csv'),
+      getSettings()
     ]);
     setUnavailability(unavailRes.data.filter(u => u.teacher_id === teacher.teacher_id));
     setPreferences(prefRes.data.filter(p => p.teacher_id === teacher.teacher_id));
+    if (settingsRes.data.seniority_levels) {
+      setSeniorityLevels(settingsRes.data.seniority_levels.split(',').map(s => s.trim()));
+    }
     setLoading(false);
   };
 
@@ -189,12 +194,19 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Seniority</label>
-                      <input
-                        type="number"
+                      <select
                         value={teacher.seniority}
                         onChange={e => setTeacher({...teacher, seniority: parseInt(e.target.value)})}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                      />
+                      >
+                        {seniorityLevels.map((label, idx) => (
+                          <option key={idx + 1} value={idx + 1}>{label}</option>
+                        ))}
+                        {teacher.seniority > seniorityLevels.length && (
+                          <option value={teacher.seniority}>Level {teacher.seniority}</option>
+                        )}
+                        {!seniorityLevels.length && !teacher.seniority && <option value={1}>Level 1</option>}
+                      </select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">

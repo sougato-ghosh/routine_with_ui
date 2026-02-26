@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getData, updateData, importCSV, exportCSV } from '../api';
+import { getData, updateData, importCSV, exportCSV, getSettings } from '../api';
 import { cn } from '../utils';
 import { DEPARTMENTS } from '../constants';
 import TeacherProfile from './TeacherProfile';
 
 function Teachers() {
   const [teachers, setTeachers] = useState([]);
+  const [seniorityLevels, setSeniorityLevels] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +22,26 @@ function Teachers() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    fetchTeachers();
+    fetchInitialData();
   }, []);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      const [teachersRes, settingsRes] = await Promise.all([
+        getData('teachers.csv'),
+        getSettings()
+      ]);
+      setTeachers(teachersRes.data);
+      if (settingsRes.data.seniority_levels) {
+        setSeniorityLevels(settingsRes.data.seniority_levels.split(',').map(s => s.trim()));
+      }
+    } catch (err) {
+      console.error("Failed to fetch initial data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTeachers = () => {
     setLoading(true);
@@ -30,6 +49,14 @@ function Teachers() {
       setTeachers(res.data);
       setLoading(false);
     });
+  };
+
+  const getSeniorityLabel = (level) => {
+    const idx = parseInt(level) - 1;
+    if (idx >= 0 && idx < seniorityLevels.length) {
+      return seniorityLevels[idx];
+    }
+    return `Level ${level}`;
   };
 
   const handleImportClick = () => {
@@ -197,7 +224,7 @@ function Teachers() {
                           {teacher.department || 'N/A'}
                         </span>
                         <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black tracking-wider uppercase">
-                          Seniority {teacher.seniority}
+                          {getSeniorityLabel(teacher.seniority)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm text-slate-500">
@@ -241,15 +268,21 @@ function Teachers() {
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="seniority" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Seniority</label>
-                  <input
+                  <select
                     id="seniority"
                     required
-                    type="number"
-                    min="1"
                     value={newTeacher.seniority}
                     onChange={e => setNewTeacher({...newTeacher, seniority: parseInt(e.target.value)})}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                  />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
+                  >
+                    {seniorityLevels.map((label, idx) => (
+                      <option key={idx + 1} value={idx + 1}>{label}</option>
+                    ))}
+                    {newTeacher.seniority > seniorityLevels.length && (
+                      <option value={newTeacher.seniority}>Level {newTeacher.seniority}</option>
+                    )}
+                    {!seniorityLevels.length && !newTeacher.seniority && <option value={1}>Level 1</option>}
+                  </select>
                 </div>
               </div>
 
