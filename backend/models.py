@@ -35,7 +35,9 @@ class Subject(Base):
     __tablename__ = 'subjects'
     id = Column(Integer, primary_key=True)
     user_id = Column(String, default="default_user")
-    subject_id = Column(String, unique=True, nullable=False)
+    class_id = Column(String)
+    subject_id = Column(String, nullable=False)
+    dept = Column(String)
     name = Column(String, nullable=False)
     duration = Column(Integer, default=1)
     required_room_type = Column(String)
@@ -55,9 +57,9 @@ class Curriculum(Base):
     user_id = Column(String, default="default_user")
     class_id = Column(String, nullable=False)
     subject_id = Column(String, nullable=False)
+    dept = Column(String)
     teacher_id = Column(String, nullable=False)
     periods_per_week = Column(Integer, default=1)
-    room_id = Column(String) # Optional fixed room
 
 class TeacherUnavailability(Base):
     __tablename__ = 'teacher_unavailability'
