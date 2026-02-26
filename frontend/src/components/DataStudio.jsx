@@ -129,6 +129,7 @@ function DataStudio() {
       case 'allotment':
         return (
           <ClassAllotmentTab
+            activeTerms={savedActiveTerms}
             courses={subjects}
             selectedCourse={selectedCourse}
             setSelectedCourse={setSelectedCourse}
