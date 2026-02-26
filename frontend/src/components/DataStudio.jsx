@@ -55,9 +55,6 @@ function DataStudio() {
         const active = res.data.filter(t => t.is_active).map(t => t.name);
         setActiveTerms(active);
         setSavedActiveTerms(active);
-      } else if (activeTab === 'classes') {
-        const res = await getData('classes.csv');
-        setClasses(res.data);
       } else if (activeTab === 'allotment') {
         const [subjRes, teachRes, clsRes, currRes] = await Promise.all([
           getData('subjects.csv'),
@@ -128,7 +125,7 @@ function DataStudio() {
       case 'courses':
         return <CourseDetailsTab activeTerms={savedActiveTerms} />;
       case 'classes':
-        return <ClassesTab classes={classes} loading={loading} activeTerms={savedActiveTerms} />;
+        return <ClassesTab activeTerms={savedActiveTerms} />;
       case 'allotment':
         return (
           <ClassAllotmentTab
