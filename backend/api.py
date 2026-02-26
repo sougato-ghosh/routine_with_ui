@@ -47,7 +47,8 @@ def ensure_default_settings():
             "period_times": "8:00-8:50,9:00-9:50,10:00-10:50,11:00-11:50,12:00-12:50,1:00-1:30,2:00-2:50,3:00-3:50,4:00-4:50",
             "break_time_label": "1:30 - 2:00",
             "sections": "A,B,C",
-            "seniority_levels": "Lecturer,Assistant Professor,Associate Professor,Professor"
+            "seniority_levels": "Lecturer,Assistant Professor,Associate Professor,Professor",
+            "departments": "ME,CHEM,CHE,EEE,CSE,CE,IPE,MME,WRE,Math,Physics,Hum"
         }
         for k, v in defaults.items():
             exists = db.query(Setting).filter(Setting.key == k).first()
