@@ -44,7 +44,8 @@ def check_referential_integrity(datasets):
 
     teacher_ids = set(teachers_df['teacher_id'])
     class_ids = set(classes_df['class_id'])
-    subject_ids = set(subjects_df['subject_id'])
+    # Subject matching now uses (class_id prefix, subject_id)
+    subject_keys = set(zip(subjects_df['class_id'].astype(str), subjects_df['subject_id']))
 
     issues = []
     for index, row in curriculum_df.iterrows():
@@ -56,36 +57,52 @@ def check_referential_integrity(datasets):
             msg = f"Class ID '{row['class_id']}' not found in classes table."
             logging.warning(f"Referential Integrity: In curriculum, {msg}")
             issues.append({"type": "warning", "category": "Referential Integrity", "message": msg})
-        if row['subject_id'] not in subject_ids:
-            msg = f"Subject ID '{row['subject_id']}' not found in subjects table."
+
+        lt_prefix = str(row['class_id'])[:2]
+        if (lt_prefix, row['subject_id']) not in subject_keys:
+            msg = f"Subject ID '{row['subject_id']}' for class prefix '{lt_prefix}' not found in subjects table."
             logging.warning(f"Referential Integrity: In curriculum, {msg}")
             issues.append({"type": "warning", "category": "Referential Integrity", "message": msg})
 
     return issues
 
 def check_duplicate_ids(datasets):
+    # Mapping of filenames to lists of columns that should be unique together
     files_and_keys = {
-        'teachers.csv': 'teacher_id',
-        'subjects.csv': 'subject_id',
-        'rooms.csv': 'room_id',
-        'classes.csv': 'class_id'
+        'teachers.csv': ['teacher_id'],
+        'subjects.csv': ['class_id', 'subject_id'],
+        'rooms.csv': ['room_id'],
+        'classes.csv': ['class_id']
     }
     issues = []
-    for filename, key in files_and_keys.items():
+    for filename, keys in files_and_keys.items():
         df = datasets[filename]
-        duplicates = df[df.duplicated(subset=[key], keep=False)]
+        duplicates = df[df.duplicated(subset=keys, keep=False)]
         if not duplicates.empty:
-            for index, row in duplicates.drop_duplicates(subset=[key]).iterrows():
-                msg = f"In {filename.replace('.csv', '')} table, duplicate {key} '{row[key]}' found."
+            for index, row in duplicates.drop_duplicates(subset=keys).iterrows():
+                key_desc = ", ".join([f"{k} '{row[k]}'" for k in keys])
+                msg = f"In {filename.replace('.csv', '')} table, duplicate {key_desc} found."
                 logging.error(f"Duplicate ID: {msg}")
                 issues.append({"type": "error", "category": "Duplicate ID", "message": msg})
     return issues
 
 def check_teacher_workload(datasets, days_per_week):
-    curriculum_df = datasets['curriculum.csv']
+    curriculum_df = datasets['curriculum.csv'].copy()
     teachers_df = datasets['teachers.csv']
     subjects_df = datasets['subjects.csv']
-    merged_df = pd.merge(curriculum_df, subjects_df, on='subject_id')
+
+    # Add class_prefix to curriculum for merging
+    curriculum_df['class_prefix'] = curriculum_df['class_id'].astype(str).str[:2]
+    subjects_df_copy = subjects_df.copy()
+    subjects_df_copy['class_id'] = subjects_df_copy['class_id'].astype(str)
+
+    merged_df = pd.merge(
+        curriculum_df,
+        subjects_df_copy,
+        left_on=['class_prefix', 'subject_id'],
+        right_on=['class_id', 'subject_id'],
+        suffixes=('', '_subj')
+    )
     issues = []
     for _, teacher_info in teachers_df.iterrows():
         teacher_id = teacher_info['teacher_id']
@@ -118,13 +135,17 @@ def check_course_credits(datasets):
     curriculum_df = datasets['curriculum.csv']
     subjects_df = datasets['subjects.csv']
     subjects_all_sem_df = datasets['subjects_of_all_semester.csv']
+
+    # Theory subjects identified by (class_id, subject_id)
     theory_subjects = subjects_df[subjects_df['required_room_type'].isnull() | (subjects_df['required_room_type'] == '')]
-    theory_subject_ids = set(theory_subjects['subject_id'])
+    theory_subject_keys = set(zip(theory_subjects['class_id'].astype(str), theory_subjects['subject_id']))
+
     credit_map = subjects_all_sem_df.set_index('subject_id')['credit'].to_dict()
     issues = []
     grouped = curriculum_df.groupby(['class_id', 'subject_id'])
     for (class_id, subject_id), group in grouped:
-        if subject_id in theory_subject_ids:
+        class_prefix = str(class_id)[:2]
+        if (class_prefix, subject_id) in theory_subject_keys:
             total_periods = group['periods_per_week'].sum()
             expected_credit = credit_map.get(subject_id)
             if expected_credit is not None and total_periods != expected_credit:

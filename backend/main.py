@@ -61,8 +61,8 @@ class SessionData:
     session_id: str
     class_id: str
     subject_id: str
+    dept: Optional[str]
     teacher_id: str
-    room_id: Optional[str]
 
 # ------------------------------
 # Helpers
@@ -109,12 +109,12 @@ def load_rooms(db: Session) -> Dict[str, dict]:
         'type': r.type or ''
     } for r in rooms}
 
-def load_subjects(db: Session) -> Dict[str, dict]:
+def load_subjects(db: Session) -> Dict[Tuple[str, str], dict]:
     subjects = db.query(Subject).all()
     subjects_data = {}
     for s in subjects:
         viable_rooms_str = s.viable_rooms or ""
-        subjects_data[s.subject_id] = {
+        subjects_data[(str(s.class_id), s.subject_id)] = {
             'name': s.name,
             'duration': s.duration,
             'required_room_type': s.required_room_type or '',
@@ -154,8 +154,8 @@ def load_curriculum(db: Session) -> List[SessionData]:
                 session_id=f'S{idx}',
                 class_id=item.class_id,
                 subject_id=item.subject_id,
-                teacher_id=item.teacher_id,
-                room_id=item.room_id
+                dept=item.dept,
+                teacher_id=item.teacher_id
             ))
     return sessions
 
@@ -211,13 +211,23 @@ class ORTimetableSolver:
         self.rooms = rooms
         self.classes = classes
         self.teachers = teachers
-        self.subjects = subjects
+        self.subjects = subjects # (class_id, subject_id) -> data
         self.unavailability = unavailability
         self.teacher_preferences = teacher_preferences
         self.home_room_map = home_room_map
         self.time_limit_sec = time_limit_sec
         self.model = cp_model.CpModel()
         self.possible_assignments_for_session = defaultdict(list)
+
+        # Pre-resolve subject data for each session
+        self.session_subjects = {}
+        for s in self.sessions:
+            lt_prefix = s.class_id[:2]
+            subj_data = self.subjects.get((lt_prefix, s.subject_id))
+            if not subj_data:
+                # Fallback to any subject with this ID if specific match not found
+                subj_data = next((v for k, v in self.subjects.items() if k[1] == s.subject_id), None)
+            self.session_subjects[s.session_id] = subj_data
 
     def solve(self) -> Tuple[bool, Dict[str, Tuple[TimeslotTuple, str]]]:
         assignment = self._create_decision_variables()
@@ -245,7 +255,8 @@ class ORTimetableSolver:
     def _create_decision_variables(self) -> Dict:
         assignment = {}
         for s in self.sessions:
-            subject = self.subjects[s.subject_id]
+            subject = self.session_subjects.get(s.session_id)
+            if not subject: continue
             is_lab = subject.get('required_room_type') == 'Lab' and subject.get('viable_rooms')
 
             possible_rooms = []
@@ -291,7 +302,9 @@ class ORTimetableSolver:
                 active_sessions = []
                 for s in self.sessions:
                     if s.teacher_id == teacher_id:
-                        duration = self.subjects[s.subject_id]['duration']
+                        subject = self.session_subjects.get(s.session_id)
+                        if not subject: continue
+                        duration = subject['duration']
                         for i in range(duration):
                             start_t = TimeslotTuple(t.day, t.period - i)
                             if (s.session_id, start_t) in session_starts_at:
@@ -302,7 +315,9 @@ class ORTimetableSolver:
                 active_sessions = []
                 for s in self.sessions:
                     if s.class_id == class_id:
-                        duration = self.subjects[s.subject_id]['duration']
+                        subject = self.session_subjects.get(s.session_id)
+                        if not subject: continue
+                        duration = subject['duration']
                         for i in range(duration):
                             start_t = TimeslotTuple(t.day, t.period - i)
                             if (s.session_id, start_t) in session_starts_at:
@@ -312,8 +327,8 @@ class ORTimetableSolver:
             for r_id in self.rooms:
                 active_sessions_in_room = []
                 for s in self.sessions:
-                    subject = self.subjects[s.subject_id]
-                    if r_id not in subject.get('viable_rooms', []):
+                    subject = self.session_subjects.get(s.session_id)
+                    if not subject or r_id not in subject.get('viable_rooms', []):
                         continue
                     duration = subject['duration']
                     for i in range(duration):
@@ -327,17 +342,21 @@ class ORTimetableSolver:
             weekly_load_vars = []
             for s in self.sessions:
                 if s.teacher_id == teacher_id:
+                    subject = self.session_subjects.get(s.session_id)
+                    if not subject: continue
                     for t in self.timeslots:
-                        weekly_load_vars.append(session_starts_at[(s.session_id, t)] * self.subjects[s.subject_id]['duration'])
+                        weekly_load_vars.append(session_starts_at[(s.session_id, t)] * subject['duration'])
             self.model.Add(sum(weekly_load_vars) <= teacher_info['max_load_week'])
 
             for day in sorted(list(set(t.day for t in self.timeslots))):
                 daily_load_vars = []
                 for s in self.sessions:
                     if s.teacher_id == teacher_id:
+                        subject = self.session_subjects.get(s.session_id)
+                        if not subject: continue
                         for t in self.timeslots:
                             if t.day == day:
-                                daily_load_vars.append(session_starts_at[(s.session_id, t)] * self.subjects[s.subject_id]['duration'])
+                                daily_load_vars.append(session_starts_at[(s.session_id, t)] * subject['duration'])
                 self.model.Add(sum(daily_load_vars) <= teacher_info['max_load_day'])
 
         for s in self.sessions:
@@ -347,7 +366,9 @@ class ORTimetableSolver:
 
     def _add_structural_constraints(self, session_starts_at: Dict):
         for s in self.sessions:
-            duration = self.subjects[s.subject_id]['duration']
+            subject = self.session_subjects.get(s.session_id)
+            if not subject: continue
+            duration = subject['duration']
             if duration > 1:
                 for t_idx, t in enumerate(self.timeslots):
                     max_period_for_day = max(ts.period for ts in self.timeslots if ts.day == t.day)
@@ -374,7 +395,8 @@ class ORTimetableSolver:
 
     def _add_scheduling_rules(self, session_starts_at: Dict):
         for s in self.sessions:
-            subject = self.subjects[s.subject_id]
+            subject = self.session_subjects.get(s.session_id)
+            if not subject: continue
             is_lab = subject.get('required_room_type') == 'Lab'
             is_optional = subject.get('is_optional', False)
             is_theory = not is_lab and not is_optional
@@ -447,8 +469,8 @@ class ORTimetableSolver:
         
         penalty_for_late_optional = -1000
         for s in self.sessions:
-            subject = self.subjects[s.subject_id]
-            if subject.get('is_optional', False):
+            subject = self.session_subjects.get(s.session_id)
+            if subject and subject.get('is_optional', False):
                 for t in self.timeslots:
                     if t.period in [7, 8, 9]:
                         if (s.session_id, t) in session_starts_at:
@@ -543,12 +565,15 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
                 sid = grid[d_idx][p_idx]
                 if sid:
                     s = sessions_by_id[sid]
-                    colspan = subjects[s.subject_id]['duration']
+                    lt_prefix = s.class_id[:2]
+                    subject = subjects.get((lt_prefix, s.subject_id))
+                    if not subject: subject = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
+
+                    colspan = subject.get('duration', 1)
                     for i in range(colspan):
                         if p_idx + i < len(periods): covered[d_idx][p_idx + i] = True
                     t_val, cell_r_id = assignment[sid]
                     room_info_display = ""
-                    subject = subjects[s.subject_id]
                     if subject.get('required_room_type') == 'Lab':
                         room_name = rooms.get(cell_r_id, {}).get('name', cell_r_id)
                         room_info_display = f"<div class='room-info'>{room_name} #{cell_r_id}</div>"
@@ -582,7 +607,11 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
                 sid = grid[d_idx][p_idx]
                 if sid:
                     s = sessions_by_id[sid]
-                    colspan = subjects[s.subject_id]['duration']
+                    lt_prefix = s.class_id[:2]
+                    subject = subjects.get((lt_prefix, s.subject_id))
+                    if not subject: subject = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
+
+                    colspan = subject.get('duration', 1)
                     for i in range(colspan):
                         if p_idx + i < len(periods): covered[d_idx][p_idx + i] = True
                     t_val, cell_r_id = assignment[sid]
@@ -596,7 +625,11 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
     combined_rows = [['session_id', 'class', 'subject', 'teacher', 'day', 'period', 'room']]
     for sid, (t, r) in sorted(assignment.items(), key=lambda x: (x[1][0].day, x[1][0].period)):
         s = sessions_by_id.get(sid)
-        if s: combined_rows.append([sid, s.class_id, subjects.get(s.subject_id, {}).get('name', 'N/A'), teachers.get(s.teacher_id, {}).get('name', 'N/A'), t.day, t.period, r])
+        if s:
+            lt_prefix = s.class_id[:2]
+            subject = subjects.get((lt_prefix, s.subject_id))
+            if not subject: subject = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
+            combined_rows.append([sid, s.class_id, subject.get('name', 'N/A'), teachers.get(s.teacher_id, {}).get('name', 'N/A'), t.day, t.period, r])
     write_csv(os.path.join(OUT_DIR, 'all_assignments.csv'), combined_rows[0], combined_rows[1:])
 
 # ------------------------------
@@ -626,8 +659,14 @@ def run():
             return {'status': f"ERROR: {e}", 'sessions_total': 0, 'sessions_scheduled': 0, 'output_dir': OUT_DIR}
 
         if not optional_included:
-            optional_subject_ids = {sid for sid, data in subjects.items() if data.get('is_optional', False)}
-            sessions = [s for s in sessions if s.subject_id not in optional_subject_ids]
+            optional_session_ids = set()
+            for s in sessions:
+                lt_prefix = s.class_id[:2]
+                subj_data = subjects.get((lt_prefix, s.subject_id))
+                if not subj_data: subj_data = next((v for k, v in subjects.items() if k[1] == s.subject_id), None)
+                if subj_data and subj_data.get('is_optional', False):
+                    optional_session_ids.add(s.session_id)
+            sessions = [s for s in sessions if s.session_id not in optional_session_ids]
 
         if not sessions:
             return {'status': "ERROR: No valid session data found.", 'sessions_total': 0, 'sessions_scheduled': 0, 'output_dir': OUT_DIR}
