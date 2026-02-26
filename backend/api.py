@@ -76,6 +76,17 @@ def to_dict(obj):
     if 'user_id' in d: del d['user_id']
     return d
 
+def clean_data(item, model):
+    """
+    Filters dictionary keys to match model columns and removes reserved fields like 'id' and 'user_id'
+    to prevent conflicts during database insertion.
+    """
+    return {
+        k: (None if pd.isna(v) else v) if isinstance(v, (float, int)) and pd.isna(v) else v
+        for k, v in item.items()
+        if k in model.__table__.columns and k not in ['id', 'user_id']
+    }
+
 @app.get("/overview")
 def get_overview(db: Session = Depends(get_db)):
     return {
@@ -107,7 +118,8 @@ def update_data(filename: str, data: List[Dict[Any, Any]], db: Session = Depends
         db.query(Curriculum).delete()
 
     for item in data:
-        db.add(model(**item, user_id="default_user"))
+        valid_data = clean_data(item, model)
+        db.add(model(**valid_data, user_id="default_user"))
     db.commit()
     return {"status": "success"}
 
@@ -162,10 +174,8 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
         df = df[mask]
 
     for _, row in df.iterrows():
-        # Clean row data (remove NaNs)
-        item_data = row.to_dict()
-        item_data = {k: (None if pd.isna(v) else v) for k, v in item_data.items() if k in model.__table__.columns}
-        db.add(model(**item_data, user_id="default_user"))
+        valid_data = clean_data(row.to_dict(), model)
+        db.add(model(**valid_data, user_id="default_user"))
     db.commit()
     return {"status": "success"}
 
