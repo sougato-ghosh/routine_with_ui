@@ -18,6 +18,7 @@ const TABS = [
 function DataStudio() {
   const [activeTab, setActiveTab] = useState('terms');
   const [activeTerms, setActiveTerms] = useState([]);
+  const [savedActiveTerms, setSavedActiveTerms] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -32,12 +33,28 @@ function DataStudio() {
     loadData();
   }, [activeTab]);
 
+  useEffect(() => {
+    const fetchSavedTerms = async () => {
+      try {
+        const res = await getData('terms.csv');
+        const active = res.data.filter(t => t.is_active).map(t => t.name);
+        setActiveTerms(active);
+        setSavedActiveTerms(active);
+      } catch (err) {
+        console.error("Failed to load saved terms", err);
+      }
+    };
+    fetchSavedTerms();
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'terms') {
         const res = await getData('terms.csv');
-        setActiveTerms(res.data.filter(t => t.is_active).map(t => t.name));
+        const active = res.data.filter(t => t.is_active).map(t => t.name);
+        setActiveTerms(active);
+        setSavedActiveTerms(active);
       } else if (activeTab === 'courses') {
         const res = await getData('subjects.csv');
         setSubjects(res.data);
@@ -80,6 +97,9 @@ function DataStudio() {
   };
 
   const handleSaveTerms = async () => {
+    const confirmed = window.confirm("Are you sure you want to update the active terms? This will affect which terms are visible in Course Details and Classes.");
+    if (!confirmed) return;
+
     setSaving(true);
     try {
       const termData = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'].map(name => ({
@@ -87,7 +107,11 @@ function DataStudio() {
         is_active: activeTerms.includes(name)
       }));
       await updateData('terms.csv', termData);
+      setSavedActiveTerms([...activeTerms]);
       showToast("Terms Updated!");
+    } catch (err) {
+      console.error("Failed to save terms", err);
+      alert("Failed to save terms");
     } finally {
       setSaving(false);
     }
@@ -105,9 +129,9 @@ function DataStudio() {
           />
         );
       case 'courses':
-        return <CourseDetailsTab subjects={subjects} loading={loading} />;
+        return <CourseDetailsTab subjects={subjects} loading={loading} activeTerms={savedActiveTerms} />;
       case 'classes':
-        return <ClassesTab classes={classes} loading={loading} />;
+        return <ClassesTab classes={classes} loading={loading} activeTerms={savedActiveTerms} />;
       case 'allotment':
         return (
           <ClassAllotmentTab
