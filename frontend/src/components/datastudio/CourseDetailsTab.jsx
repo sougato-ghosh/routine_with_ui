@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 
-function CourseDetailsTab({ subjects, loading }) {
+function CourseDetailsTab({ subjects, loading, activeTerms = [] }) {
   const [selectedTerm, setSelectedTerm] = useState('All');
-  const terms = ['All', '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const allTerms = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const terms = ['All', ...allTerms.filter(t => activeTerms.includes(t))];
 
   const filteredSubjects = selectedTerm === 'All'
     ? subjects
