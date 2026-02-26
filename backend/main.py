@@ -12,7 +12,7 @@ from ortools.sat.python import cp_model
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import (
-    Teacher, Room, Class, Subject, Timeslot, Curriculum,
+    Teacher, Room, Class, Subject, Curriculum,
     TeacherUnavailability, TeacherPreference, Setting
 )
 
@@ -24,32 +24,30 @@ OUT_DIR = os.path.join(BASE_DIR, 'output')
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # ------------------------------
-# Constants
+# Helpers
 # ------------------------------
 
-PERIOD_CONFIG = {
-    1: {"label": "1st", "time": "8:00 - 8:50"},
-    2: {"label": "2nd", "time": "9:00 - 9:50"},
-    3: {"label": "3rd", "time": "10:00 - 10:50"},
-    4: {"label": "4th", "time": "11:00 - 11:50"},
-    5: {"label": "5th", "time": "12:00 - 12:50"},
-    6: {"label": "6th", "time": "1:00 - 1:30"},
-    7: {"label": "7th", "time": "2:00 - 2:50"},
-    8: {"label": "8th", "time": "3:00 - 3:50"},
-    9: {"label": "9th", "time": "4:00 - 4:50"},
-}
+def get_period_config(info: Dict[str, str]) -> Dict[int, dict]:
+    periods_num = int(info.get('periods_num', 9))
+    labels = info.get('period_labels', "").split(',')
+    times = info.get('period_times', "").split(',')
 
-BREAK_TIME = "1:30 - 2:00"
+    config = {}
+    for i in range(1, periods_num + 1):
+        label = labels[i-1].strip() if i-1 < len(labels) else f"{i}th"
+        time_val = times[i-1].strip() if i-1 < len(times) else ""
+        config[i] = {"label": label, "time": time_val}
+    return config
 
-DAY_MAPPING = {
-    1: "Sa",
-    2: "Su",
-    3: "Mo",
-    4: "Tu",
-    5: "We",
-    6: "Th",
-    7: "Fr",
-}
+def get_day_mapping(info: Dict[str, str]) -> Dict[int, str]:
+    days_num = int(info.get('days_num', 5))
+    labels = info.get('day_labels', "").split(',')
+
+    mapping = {}
+    for i in range(1, days_num + 1):
+        label = labels[i-1].strip() if i-1 < len(labels) else str(i)
+        mapping[i] = label
+    return mapping
 
 # ------------------------------
 # Data models
@@ -123,9 +121,13 @@ def load_subjects(db: Session) -> Dict[Tuple[str, str], dict]:
         }
     return subjects_data
 
-def load_timeslots(db: Session) -> List[TimeslotTuple]:
-    timeslots = db.query(Timeslot).all()
-    ts_list = [TimeslotTuple(t.day, t.period) for t in timeslots]
+def load_timeslots(info: Dict[str, str]) -> List[TimeslotTuple]:
+    days_num = int(info.get('days_num', 5))
+    periods_num = int(info.get('periods_num', 9))
+    ts_list = []
+    for d in range(1, days_num + 1):
+        for p in range(1, periods_num + 1):
+            ts_list.append(TimeslotTuple(d, p))
     return sorted(ts_list)
 
 def load_unavailability(db: Session) -> Dict[str, set]:
@@ -205,7 +207,7 @@ def assign_home_rooms(classes: Dict[str, dict], rooms: Dict[str, dict]) -> Dict[
 # ------------------------------
 
 class ORTimetableSolver:
-    def __init__(self, sessions, timeslots, rooms, classes, teachers, subjects, unavailability, teacher_preferences, home_room_map, time_limit_sec=30):
+    def __init__(self, sessions, timeslots, rooms, classes, teachers, subjects, unavailability, teacher_preferences, home_room_map, info, time_limit_sec=30):
         self.sessions = sessions
         self.timeslots = timeslots
         self.rooms = rooms
@@ -215,6 +217,7 @@ class ORTimetableSolver:
         self.unavailability = unavailability
         self.teacher_preferences = teacher_preferences
         self.home_room_map = home_room_map
+        self.info = info
         self.time_limit_sec = time_limit_sec
         self.model = cp_model.CpModel()
         self.possible_assignments_for_session = defaultdict(list)
@@ -394,6 +397,10 @@ class ORTimetableSolver:
                         self.model.AddImplication(is_optional_slot, session_starts_at[(s.session_id, t)].Not())
 
     def _add_scheduling_rules(self, session_starts_at: Dict):
+        break_period = int(self.info.get('break_period', 6))
+        lab_allowed = [int(p) for p in self.info.get('lab_allowed_periods', '1,4,7').split(',') if p.strip()]
+        theory_allowed = [int(p) for p in self.info.get('theory_allowed_periods', '1,2,3,4,5').split(',') if p.strip()]
+
         for s in self.sessions:
             subject = self.session_subjects.get(s.session_id)
             if not subject: continue
@@ -401,11 +408,11 @@ class ORTimetableSolver:
             is_optional = subject.get('is_optional', False)
             is_theory = not is_lab and not is_optional
             for t in self.timeslots:
-                if t.period == 6:
+                if t.period == break_period:
                     self.model.Add(session_starts_at[(s.session_id, t)] == 0)
-                if is_lab and t.period not in [1, 4, 7]:
+                if is_lab and t.period not in lab_allowed:
                     self.model.Add(session_starts_at[(s.session_id, t)] == 0)
-                if is_theory and t.period in [7, 8, 9]:
+                if is_theory and t.period not in theory_allowed:
                     self.model.Add(session_starts_at[(s.session_id, t)] == 0)
 
     def _add_same_day_course_constraints(self, session_starts_at: Dict):
@@ -510,6 +517,11 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
     days = sorted(list(set(t.day for t in timeslots)))
     periods = sorted(list(set(t.period for t in timeslots)))
 
+    period_config = get_period_config(info)
+    day_mapping = get_day_mapping(info)
+    break_period = int(info.get('break_period', 6))
+    break_time_label = info.get('break_time_label', '1:30 - 2:00')
+
     css = """
     <style>
         body { font-family: Arial, sans-serif; }
@@ -552,14 +564,14 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
 
         html += "<table class='timetable'><tr><th></th>"
         for p in periods:
-            p_label, p_time = PERIOD_CONFIG.get(p, {}).get('label', f"{p}th"), PERIOD_CONFIG.get(p, {}).get('time', '')
+            p_label, p_time = period_config.get(p, {}).get('label', f"{p}th"), period_config.get(p, {}).get('time', '')
             html += f"<th><div class='period-header'>{p_label}</div><div class='time-header'>{p_time}</div></th>"
-            if p == 6:
-                html += f"<th rowspan='{len(days) + 1}' class='break-cell'>Break<br><br><div class='time-header'>{BREAK_TIME}</div></th>"
+            if p == break_period:
+                html += f"<th rowspan='{len(days) + 1}' class='break-cell'>Break<br><br><div class='time-header'>{break_time_label}</div></th>"
         html += "</tr>"
 
         for d_idx, d in enumerate(days):
-            html += f"<tr><td class='day-label'>{DAY_MAPPING.get(d, str(d))}</td>"
+            html += f"<tr><td class='day-label'>{day_mapping.get(d, str(d))}</td>"
             for p_idx, p in enumerate(periods):
                 if covered[d_idx][p_idx]: continue
                 sid = grid[d_idx][p_idx]
@@ -595,13 +607,13 @@ def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessi
         html += f"<div class='class-title'>{teachers.get(teacher_id, {}).get('name', teacher_id)} ({teacher_id})</div>"
         html += "<table class='timetable'><tr><th></th>"
         for p in periods:
-            p_label, p_time = PERIOD_CONFIG.get(p, {}).get('label', f"{p}th"), PERIOD_CONFIG.get(p, {}).get('time', '')
+            p_label, p_time = period_config.get(p, {}).get('label', f"{p}th"), period_config.get(p, {}).get('time', '')
             html += f"<th><div class='period-header'>{p_label}</div><div class='time-header'>{p_time}</div></th>"
-            if p == 6: html += f"<th rowspan='{len(days) + 1}' class='break-cell'>Break<br><br><div class='time-header'>{BREAK_TIME}</div></th>"
+            if p == break_period: html += f"<th rowspan='{len(days) + 1}' class='break-cell'>Break<br><br><div class='time-header'>{break_time_label}</div></th>"
         html += "</tr>"
 
         for d_idx, d in enumerate(days):
-            html += f"<tr><td class='day-label'>{DAY_MAPPING.get(d, str(d))}</td>"
+            html += f"<tr><td class='day-label'>{day_mapping.get(d, str(d))}</td>"
             for p_idx, p in enumerate(periods):
                 if covered[d_idx][p_idx]: continue
                 sid = grid[d_idx][p_idx]
@@ -645,7 +657,7 @@ def run():
         classes = load_classes(db)
         rooms = load_rooms(db)
         subjects = load_subjects(db)
-        timeslots = load_timeslots(db)
+        timeslots = load_timeslots(info)
         unavailability = load_unavailability(db)
         teacher_preferences = load_teacher_preferences(db)
         sessions = load_curriculum(db)
@@ -671,7 +683,7 @@ def run():
         if not sessions:
             return {'status': "ERROR: No valid session data found.", 'sessions_total': 0, 'sessions_scheduled': 0, 'output_dir': OUT_DIR}
 
-        solver = ORTimetableSolver(sessions, timeslots, rooms, classes, teachers, subjects, unavailability, teacher_preferences, home_room_map)
+        solver = ORTimetableSolver(sessions, timeslots, rooms, classes, teachers, subjects, unavailability, teacher_preferences, home_room_map, info)
         success, assignment = solver.solve()
 
         status = "SUCCESS: Timetable generated." if success else "ERROR: No solution found."

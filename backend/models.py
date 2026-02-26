@@ -44,13 +44,6 @@ class Subject(Base):
     viable_rooms = Column(String) # Comma-separated list of room IDs
     is_optional = Column(Boolean, default=False)
 
-class Timeslot(Base):
-    __tablename__ = 'timeslots'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String, default="default_user")
-    day = Column(Integer, nullable=False)
-    period = Column(Integer, nullable=False)
-
 class Curriculum(Base):
     __tablename__ = 'curriculum'
     id = Column(Integer, primary_key=True)

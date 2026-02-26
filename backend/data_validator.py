@@ -5,7 +5,7 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import (
-    Teacher, Room, Class, Subject, Timeslot, Curriculum, SubjectOfAllSemester
+    Teacher, Room, Class, Subject, Curriculum, SubjectOfAllSemester, Setting
 )
 
 # --- Configuration ---
@@ -28,7 +28,6 @@ def load_data_from_db(db: Session):
         data['rooms.csv'] = pd.read_sql(db.query(Room).statement, db.bind)
         data['classes.csv'] = pd.read_sql(db.query(Class).statement, db.bind)
         data['subjects.csv'] = pd.read_sql(db.query(Subject).statement, db.bind)
-        data['timeslots.csv'] = pd.read_sql(db.query(Timeslot).statement, db.bind)
         data['curriculum.csv'] = pd.read_sql(db.query(Curriculum).statement, db.bind)
         data['subjects_of_all_semester.csv'] = pd.read_sql(db.query(SubjectOfAllSemester).statement, db.bind)
         return data, True
@@ -167,9 +166,9 @@ def validate_data():
         all_issues.extend(check_referential_integrity(datasets))
         all_issues.extend(check_duplicate_ids(datasets))
 
-        if 'timeslots.csv' in datasets and not datasets['timeslots.csv'].empty:
-            days_per_week = datasets['timeslots.csv']['day'].nunique()
-            all_issues.extend(check_teacher_workload(datasets, days_per_week))
+        settings = {s.key: s.value for s in db.query(Setting).all()}
+        days_per_week = int(settings.get('days_num', 5))
+        all_issues.extend(check_teacher_workload(datasets, days_per_week))
 
         all_issues.extend(check_course_credits(datasets))
         return all_issues
