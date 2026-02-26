@@ -85,8 +85,7 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
               subject_id: selectedCourse.subject_id,
               dept: selectedCourse.dept,
               teacher_id: a.teacher_id,
-              periods_per_week: a.periods_per_week,
-              user_id: 'default_user'
+              periods_per_week: a.periods_per_week
             });
           });
         }
