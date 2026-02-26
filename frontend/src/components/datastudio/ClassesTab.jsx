@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getData, updateData, importCSV, exportCSV } from '../../api';
+import { getData, updateData, importCSV, exportCSV, getSettings } from '../../api';
 import { cn } from '../../utils';
 
 function ClassesTab({ activeTerms = [] }) {
@@ -9,11 +9,13 @@ function ClassesTab({ activeTerms = [] }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [settings, setSettings] = useState({});
   const [newClass, setNewClass] = useState({
     class_id: '',
     name: '',
     size: 40
   });
+  const [selectedSuffix, setSelectedSuffix] = useState('');
   const fileInputRef = useRef(null);
 
   const allTerms = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
@@ -22,6 +24,7 @@ function ClassesTab({ activeTerms = [] }) {
 
   useEffect(() => {
     fetchClasses();
+    fetchSettings();
   }, []);
 
   const fetchClasses = () => {
@@ -30,6 +33,15 @@ function ClassesTab({ activeTerms = [] }) {
       setClasses(res.data);
       setLoading(false);
     });
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await getSettings();
+      setSettings(res.data);
+    } catch (err) {
+      console.error("Failed to fetch settings", err);
+    }
   };
 
   const handleImportClick = () => {
@@ -70,6 +82,10 @@ function ClassesTab({ activeTerms = [] }) {
 
   const handleAddClass = async (e) => {
     e.preventDefault();
+    if (!selectedSuffix && selectedTerm !== 'All') {
+      alert('Please select a section (A/B/C)');
+      return;
+    }
     try {
       await updateData('classes.csv', [...classes, newClass]);
       setIsModalOpen(false);
@@ -78,6 +94,7 @@ function ClassesTab({ activeTerms = [] }) {
         name: '',
         size: 40
       });
+      setSelectedSuffix('');
       fetchClasses();
     } catch (err) {
       console.error(err);
@@ -159,8 +176,20 @@ function ClassesTab({ activeTerms = [] }) {
               </button>
             )}
             <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-primary rounded-lg shadow-sm hover:bg-primary/90 transition-all"
+              disabled={selectedTerm === 'All'}
+              onClick={() => {
+                setNewClass({
+                  class_id: selectedTerm.replace('-', ''),
+                  name: '',
+                  size: 40
+                });
+                setSelectedSuffix('');
+                setIsModalOpen(true);
+              }}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-lg shadow-sm transition-all",
+                selectedTerm === 'All' ? "bg-slate-300 cursor-not-allowed" : "bg-primary hover:bg-primary/90"
+              )}
             >
               <span className="material-symbols-outlined text-lg">add</span>
               Add Class
@@ -238,14 +267,36 @@ function ClassesTab({ activeTerms = [] }) {
             <form onSubmit={handleAddClass} className="p-6 space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Class ID</label>
-                <input
-                  required
-                  type="text"
-                  value={newClass.class_id}
-                  onChange={e => setNewClass({...newClass, class_id: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                  placeholder="e.g. 11A or ME11A"
-                />
+                <div className="flex items-center gap-2">
+                   <div className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-500 font-mono text-sm">
+                      {selectedTerm.replace('-', '')}
+                   </div>
+                   <div className="flex-1 flex gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                      {(settings.sections || "A,B,C").split(',').map(s => s.trim()).map(suffix => (
+                        <button
+                          key={suffix}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSuffix(suffix);
+                            const [level, term] = selectedTerm.split('-');
+                            setNewClass({
+                              ...newClass,
+                              class_id: selectedTerm.replace('-', '') + suffix,
+                              name: `Level ${level} Term ${term} Section ${suffix}`
+                            });
+                          }}
+                          className={cn(
+                            "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all",
+                            selectedSuffix === suffix
+                              ? "bg-white text-primary shadow-sm"
+                              : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                          )}
+                        >
+                          {suffix}
+                        </button>
+                      ))}
+                   </div>
+                </div>
               </div>
 
               <div className="space-y-1">
