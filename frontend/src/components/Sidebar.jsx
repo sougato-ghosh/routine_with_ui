@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../utils';
+import { logout } from '../api';
 
 const menuItems = [
   { name: 'Overview', icon: 'grid_view', type: 'material' },
@@ -13,6 +14,13 @@ const menuItems = [
 ];
 
 function Sidebar({ currentTab, setCurrentTab }) {
+  const username = localStorage.getItem('username');
+
+  const handleLogout = () => {
+    logout();
+    window.location.reload();
+  };
+
   return (
     <aside className="w-64 bg-sidebar border-r border-slate-200 flex flex-col fixed top-0 h-screen z-40">
       <div className="p-6 flex items-center gap-2">
@@ -41,6 +49,19 @@ function Sidebar({ currentTab, setCurrentTab }) {
           </button>
         ))}
       </nav>
+      <div className="mt-auto border-t border-slate-200 p-4">
+        <div className="flex items-center gap-3 px-4 py-2 mb-2">
+          <span className="material-icons text-slate-400">account_circle</span>
+          <span className="text-sm font-medium text-slate-700 truncate">{username}</span>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all font-medium text-red-600 hover:bg-red-50"
+        >
+          <span className="material-icons text-[22px]">logout</span>
+          <span>Logout</span>
+        </button>
+      </div>
     </aside>
   );
 }

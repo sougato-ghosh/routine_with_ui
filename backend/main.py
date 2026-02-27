@@ -70,18 +70,18 @@ def write_csv(path: str, header: List[str], rows: List[List]):
 # Data loading from Database
 # ------------------------------
 
-def load_settings(db: Session) -> Dict[str, str]:
+def load_settings(db: Session, user_id: str = "default_user") -> Dict[str, str]:
     info = {
         'session_name': 'January 2025',
     }
-    settings = db.query(Setting).all()
+    settings = db.query(Setting).filter(Setting.user_id == user_id).all()
     for s in settings:
         if s.key != 'footer_right_text':
             info[s.key] = s.value
     return info
 
-def load_teachers(db: Session) -> Dict[str, dict]:
-    teachers = db.query(Teacher).all()
+def load_teachers(db: Session, user_id: str = "default_user") -> Dict[str, dict]:
+    teachers = db.query(Teacher).filter(Teacher.user_id == user_id).all()
     return {t.teacher_id: {
         'name': t.name,
         'seniority': t.seniority,
@@ -89,20 +89,20 @@ def load_teachers(db: Session) -> Dict[str, dict]:
         'max_load_week': t.max_load_week,
     } for t in teachers}
 
-def load_classes(db: Session) -> Dict[str, dict]:
-    classes = db.query(Class).all()
+def load_classes(db: Session, user_id: str = "default_user") -> Dict[str, dict]:
+    classes = db.query(Class).filter(Class.user_id == user_id).all()
     return {c.class_id: {'name': c.name, 'size': c.size} for c in classes}
 
-def load_rooms(db: Session) -> Dict[str, dict]:
-    rooms = db.query(Room).all()
+def load_rooms(db: Session, user_id: str = "default_user") -> Dict[str, dict]:
+    rooms = db.query(Room).filter(Room.user_id == user_id).all()
     return {r.room_id: {
         'name': r.name,
         'capacity': r.capacity,
         'type': r.type or ''
     } for r in rooms}
 
-def load_subjects(db: Session) -> Dict[Tuple[str, str], dict]:
-    subjects = db.query(Subject).all()
+def load_subjects(db: Session, user_id: str = "default_user") -> Dict[Tuple[str, str], dict]:
+    subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
     subjects_data = {}
     for s in subjects:
         viable_rooms_str = s.viable_rooms or ""
@@ -124,22 +124,22 @@ def load_timeslots(info: Dict[str, str]) -> List[TimeslotTuple]:
             ts_list.append(TimeslotTuple(d, p))
     return sorted(ts_list)
 
-def load_unavailability(db: Session) -> Dict[str, set]:
+def load_unavailability(db: Session, user_id: str = "default_user") -> Dict[str, set]:
     unavail = defaultdict(set)
-    items = db.query(TeacherUnavailability).all()
+    items = db.query(TeacherUnavailability).filter(TeacherUnavailability.user_id == user_id).all()
     for item in items:
         unavail[item.teacher_id].add(TimeslotTuple(item.day, item.period))
     return unavail
 
-def load_teacher_preferences(db: Session) -> Dict[str, set]:
+def load_teacher_preferences(db: Session, user_id: str = "default_user") -> Dict[str, set]:
     prefs = defaultdict(set)
-    items = db.query(TeacherPreference).all()
+    items = db.query(TeacherPreference).filter(TeacherPreference.user_id == user_id).all()
     for item in items:
         prefs[item.teacher_id].add(TimeslotTuple(item.day, item.period))
     return prefs
 
-def load_curriculum(db: Session) -> List[SessionData]:
-    items = db.query(Curriculum).all()
+def load_curriculum(db: Session, user_id: str = "default_user") -> List[SessionData]:
+    items = db.query(Curriculum).filter(Curriculum.user_id == user_id).all()
     sessions: List[SessionData] = []
     idx = 0
     for item in items:
@@ -517,19 +517,19 @@ def prepare_schedule_data(assignment: Dict[str, Tuple[TimeslotTuple, str]], sess
 # Main
 # ------------------------------
 
-def run():
+def run(user_id: str = "default_user"):
     db = SessionLocal()
     try:
-        info = load_settings(db)
+        info = load_settings(db, user_id)
         optional_included = False
-        teachers = load_teachers(db)
-        classes = load_classes(db)
-        rooms = load_rooms(db)
-        subjects = load_subjects(db)
+        teachers = load_teachers(db, user_id)
+        classes = load_classes(db, user_id)
+        rooms = load_rooms(db, user_id)
+        subjects = load_subjects(db, user_id)
         timeslots = load_timeslots(info)
-        unavailability = load_unavailability(db)
-        teacher_preferences = load_teacher_preferences(db)
-        sessions = load_curriculum(db)
+        unavailability = load_unavailability(db, user_id)
+        teacher_preferences = load_teacher_preferences(db, user_id)
+        sessions = load_curriculum(db, user_id)
 
         active_class_ids = {s.class_id for s in sessions}
         active_classes = {cid: cinfo for cid, cinfo in classes.items() if cid in active_class_ids}
