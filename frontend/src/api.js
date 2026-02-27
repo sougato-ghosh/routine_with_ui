@@ -12,9 +12,7 @@ export const updateData = (filename, data) => api.post(`/data/${filename}`, data
 export const validateData = () => api.get('/validate');
 export const runScheduler = () => api.post('/run-scheduler');
 export const getSchedules = () => api.get('/schedules');
-export const getScheduleItems = (scheduleId) => api.get(`/schedules/${scheduleId}/items`);
-export const viewSchedule = (scheduleId, type, id) => api.get(`/schedules/${scheduleId}/view`, { params: { type, id } });
-export const deleteSchedule = (scheduleId) => api.delete(`/schedules/${scheduleId}`);
+export const getSchedule = (filename) => api.get(`/schedules/${filename}`);
 
 // Database-specific endpoints
 export const getSettings = () => api.get('/settings');
