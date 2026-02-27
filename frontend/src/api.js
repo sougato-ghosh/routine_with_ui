@@ -7,8 +7,8 @@ const api = axios.create({
 });
 
 export const getOverview = () => api.get('/overview');
-export const getData = (filename) => api.get(`/data/${filename}`);
-export const updateData = (filename, data) => api.post(`/data/${filename}`, data);
+export const getData = (tableName) => api.get(`/data/${tableName}`);
+export const updateData = (tableName, data) => api.post(`/data/${tableName}`, data);
 export const validateData = () => api.get('/validate');
 export const runScheduler = () => api.post('/run-scheduler');
 export const getSchedules = () => api.get('/schedules');
@@ -20,13 +20,13 @@ export const viewSchedule = (scheduleId, type, id) => api.get(`/schedules/${sche
 // Database-specific endpoints
 export const getSettings = () => api.get('/settings');
 export const updateSettings = (data) => api.post('/settings', data);
-export const exportCSV = (filename) => {
-    window.open(`${API_BASE_URL}/export/${filename}`, '_blank');
+export const exportCSV = (tableName) => {
+    window.open(`${API_BASE_URL}/export/${tableName}`, '_blank');
 };
-export const importCSV = (filename, file) => {
+export const importCSV = (tableName, file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post(`/import/${filename}`, formData, {
+    return api.post(`/import/${tableName}`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
         },

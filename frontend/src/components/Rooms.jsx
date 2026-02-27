@@ -21,7 +21,7 @@ function Rooms() {
 
   const fetchRooms = () => {
     setLoading(true);
-    getData('rooms.csv').then(res => {
+    getData('rooms').then(res => {
       setRooms(res.data);
       setLoading(false);
     });
@@ -35,7 +35,7 @@ function Rooms() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await importCSV('rooms.csv', file);
+        await importCSV('rooms', file);
         fetchRooms();
         alert('Rooms imported successfully');
       } catch (err) {
@@ -46,14 +46,14 @@ function Rooms() {
   };
 
   const handleExport = () => {
-    exportCSV('rooms.csv');
+    exportCSV('rooms');
   };
 
   const handleDeleteRooms = async (idsToDelete) => {
     try {
       setLoading(true);
       const updatedRooms = rooms.filter(r => !idsToDelete.includes(r.room_id));
-      await updateData('rooms.csv', updatedRooms);
+      await updateData('rooms', updatedRooms);
       setSelectedIds(selectedIds.filter(id => !idsToDelete.includes(id)));
       fetchRooms();
     } catch (err) {
@@ -66,7 +66,7 @@ function Rooms() {
   const handleAddRoom = async (e) => {
     e.preventDefault();
     try {
-      await updateData('rooms.csv', [...rooms, newRoom]);
+      await updateData('rooms', [...rooms, newRoom]);
       setIsModalOpen(false);
       setNewRoom({
         room_id: '',

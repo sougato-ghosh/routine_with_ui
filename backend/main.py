@@ -16,12 +16,6 @@ from models import (
     TeacherUnavailability, TeacherPreference, Setting
 )
 
-# ------------------------------
-# Paths
-# ------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(BASE_DIR, 'output')
-os.makedirs(OUT_DIR, exist_ok=True)
 
 # ------------------------------
 # Helpers

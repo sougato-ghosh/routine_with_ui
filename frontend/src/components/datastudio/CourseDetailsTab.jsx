@@ -34,7 +34,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
     setLoading(true);
     try {
       const [subjectsRes, settingsRes] = await Promise.all([
-        getData('subjects.csv'),
+        getData('subjects'),
         getSettings()
       ]);
       setSubjects(subjectsRes.data);
@@ -54,7 +54,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
 
   const fetchSubjects = () => {
     setLoading(true);
-    getData('subjects.csv').then(res => {
+    getData('subjects').then(res => {
       setSubjects(res.data);
       setLoading(false);
     });
@@ -68,7 +68,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await importCSV('subjects.csv', file);
+        await importCSV('subjects', file);
         fetchSubjects();
         alert('Courses imported successfully');
       } catch (err) {
@@ -79,14 +79,14 @@ function CourseDetailsTab({ activeTerms = [] }) {
   };
 
   const handleExport = () => {
-    exportCSV('subjects.csv');
+    exportCSV('subjects');
   };
 
   const handleDeleteSubjects = async (idsToDelete) => {
     try {
       setLoading(true);
       const updatedSubjects = subjects.filter(s => !idsToDelete.includes(`${s.class_id}-${s.subject_id}`));
-      await updateData('subjects.csv', updatedSubjects);
+      await updateData('subjects', updatedSubjects);
       setSelectedIds(selectedIds.filter(id => !idsToDelete.includes(id)));
       fetchSubjects();
     } catch (err) {
@@ -101,7 +101,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
     try {
       const classId = selectedTerm === 'All' ? newSubject.class_id : selectedTerm.replace('-', '');
       const subjectToAdd = { ...newSubject, class_id: classId };
-      await updateData('subjects.csv', [...subjects, subjectToAdd]);
+      await updateData('subjects', [...subjects, subjectToAdd]);
       setIsModalOpen(false);
       setNewSubject({
         class_id: '',

@@ -28,8 +28,8 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
 
   const loadData = async () => {
     const [unavailRes, prefRes, settingsRes] = await Promise.all([
-      getData('teacher_unavailability.csv'),
-      getData('teacher_preferences.csv'),
+      getData('teacher_unavailability'),
+      getData('teacher_preferences'),
       getSettings()
     ]);
     setUnavailability(unavailRes.data.filter(u => u.teacher_id === teacher.teacher_id));
@@ -59,9 +59,9 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
     try {
       // Fetch all to update teacher and constraints
       const [allTeachers, allUnavail, allPref] = await Promise.all([
-        getData('teachers.csv'),
-        getData('teacher_unavailability.csv'),
-        getData('teacher_preferences.csv')
+        getData('teachers'),
+        getData('teacher_unavailability'),
+        getData('teacher_preferences')
       ]);
 
       const otherTeachers = allTeachers.data.filter(t => t.teacher_id !== initialTeacher.teacher_id);
@@ -73,9 +73,9 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
       const updatedPref = preferences.map(p => ({ ...p, teacher_id: teacher.teacher_id }));
 
       await Promise.all([
-        updateData('teachers.csv', [...otherTeachers, teacher]),
-        updateData('teacher_unavailability.csv', [...otherUnavail, ...updatedUnavail]),
-        updateData('teacher_preferences.csv', [...otherPref, ...updatedPref])
+        updateData('teachers', [...otherTeachers, teacher]),
+        updateData('teacher_unavailability', [...otherUnavail, ...updatedUnavail]),
+        updateData('teacher_preferences', [...otherPref, ...updatedPref])
       ]);
       alert("Profile and constraints saved!");
     } catch (err) {
@@ -90,9 +90,9 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
     setSaving(true);
     try {
       const [allTeachers, allUnavail, allPref] = await Promise.all([
-        getData('teachers.csv'),
-        getData('teacher_unavailability.csv'),
-        getData('teacher_preferences.csv')
+        getData('teachers'),
+        getData('teacher_unavailability'),
+        getData('teacher_preferences')
       ]);
 
       const otherTeachers = allTeachers.data.filter(t => t.teacher_id !== initialTeacher.teacher_id);
@@ -100,9 +100,9 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
       const otherPref = allPref.data.filter(p => p.teacher_id !== initialTeacher.teacher_id);
 
       await Promise.all([
-        updateData('teachers.csv', otherTeachers),
-        updateData('teacher_unavailability.csv', otherUnavail),
-        updateData('teacher_preferences.csv', otherPref)
+        updateData('teachers', otherTeachers),
+        updateData('teacher_unavailability', otherUnavail),
+        updateData('teacher_preferences', otherPref)
       ]);
       onBack();
     } catch (err) {

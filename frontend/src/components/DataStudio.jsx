@@ -36,7 +36,7 @@ function DataStudio() {
   useEffect(() => {
     const fetchSavedTerms = async () => {
       try {
-        const res = await getData('terms.csv');
+        const res = await getData('terms');
         const active = res.data.filter(t => t.is_active).map(t => t.name);
         setActiveTerms(active);
         setSavedActiveTerms(active);
@@ -51,16 +51,16 @@ function DataStudio() {
     setLoading(true);
     try {
       if (activeTab === 'terms') {
-        const res = await getData('terms.csv');
+        const res = await getData('terms');
         const active = res.data.filter(t => t.is_active).map(t => t.name);
         setActiveTerms(active);
         setSavedActiveTerms(active);
       } else if (activeTab === 'allotment') {
         const [subjRes, teachRes, clsRes, currRes] = await Promise.all([
-          getData('subjects.csv'),
-          getData('teachers.csv'),
-          getData('classes.csv'),
-          getData('curriculum.csv')
+          getData('subjects'),
+          getData('teachers'),
+          getData('classes'),
+          getData('curriculum')
         ]);
         setSubjects(subjRes.data);
         setTeachers(teachRes.data);
@@ -100,7 +100,7 @@ function DataStudio() {
         name,
         is_active: activeTerms.includes(name)
       }));
-      await updateData('terms.csv', termData);
+      await updateData('terms', termData);
       setSavedActiveTerms([...activeTerms]);
       showToast("Terms Updated!");
     } catch (err) {
