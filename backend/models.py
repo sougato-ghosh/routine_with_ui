@@ -90,3 +90,24 @@ class Term(Base):
     user_id = Column(String, default="default_user")
     name = Column(String, unique=True, nullable=False) # e.g. "1-1", "1-2"
     is_active = Column(Boolean, default=True)
+
+class Schedule(Base):
+    __tablename__ = 'schedules'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, default="default_user")
+    name = Column(String, nullable=False)
+    created_at = Column(String, nullable=False)
+    # Store settings used at generation time as JSON
+    settings_snapshot = Column(String)
+
+class ScheduleAssignment(Base):
+    __tablename__ = 'schedule_assignments'
+    id = Column(Integer, primary_key=True)
+    schedule_id = Column(Integer, ForeignKey('schedules.id'), nullable=False)
+    session_id = Column(String)
+    class_id = Column(String)
+    subject_id = Column(String)
+    teacher_id = Column(String)
+    day = Column(Integer)
+    period = Column(Integer)
+    room_id = Column(String)
