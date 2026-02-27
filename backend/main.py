@@ -13,15 +13,14 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import (
     Teacher, Room, Class, Subject, Curriculum,
-    TeacherUnavailability, TeacherPreference, Setting
+    TeacherUnavailability, TeacherPreference, Setting,
+    Schedule, ScheduleAssignment, ScheduleHomeRoom
 )
 
 # ------------------------------
 # Paths
 # ------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(BASE_DIR, 'output')
-os.makedirs(OUT_DIR, exist_ok=True)
 
 # ------------------------------
 # Helpers
@@ -494,155 +493,67 @@ class ORTimetableSolver:
 # Output generation
 # ------------------------------
 
-def format_class_name(class_id: str) -> str:
-    if len(class_id) >= 3 and class_id[0].isdigit() and class_id[1].isdigit():
-        level, term, sec = class_id[0], class_id[1], class_id[2:]
-        return f"ME L-{level}/T-{term} (Sec {sec})"
-    return f"ME {class_id}"
+def save_schedule_to_db(db: Session, assignment: Dict[str, Tuple[TimeslotTuple, str]], sessions: List[SessionData], teachers: Dict[str, dict], classes: Dict[str, dict], rooms: Dict[str, dict], subjects: Dict[str, dict], home_room_map: Dict[str, str]):
+    # Deactivate current active schedule
+    db.query(Schedule).filter(Schedule.is_active == True).update({Schedule.is_active: False})
 
-def format_room_id(room_id: str, rooms: Dict[str, dict]) -> str:
-    room_info = rooms.get(room_id, {})
-    if room_info.get('type') == 'Theory':
-        return f"ME {room_id}"
-    return room_id
+    # Create new schedule record
+    now = datetime.now()
+    schedule_name = f"Schedule - {now.strftime('%Y-%m-%d %H:%M')}"
+    new_schedule = Schedule(
+        name=schedule_name,
+        created_at=now.isoformat(),
+        is_active=True,
+        user_id="default_user"
+    )
+    db.add(new_schedule)
+    db.flush() # To get the id
 
-def write_home_rooms_csv(home_room_map: Dict[str, str], rooms: Dict[str, dict]):
-    header = ['class_id', 'home_room']
-    rows = [[cid, rid] for cid, rid in sorted(home_room_map.items())]
-    path = os.path.join(OUT_DIR, 'homerooms.csv')
-    write_csv(path, header, rows)
-
-def create_output_tables(assignment: Dict[str, Tuple[TimeslotTuple, str]], sessions: List[SessionData], teachers: Dict[str, dict], classes: Dict[str, dict], rooms: Dict[str, dict], subjects: Dict[str, dict], timeslots: List[TimeslotTuple], home_room_map: Dict[str, str], info: Dict[str, str]):
     sessions_by_id = {s.session_id: s for s in sessions}
-    days = sorted(list(set(t.day for t in timeslots)))
-    periods = sorted(list(set(t.period for t in timeslots)))
 
-    period_config = get_period_config(info)
-    day_mapping = get_day_mapping(info)
-    break_period = int(info.get('break_period', 6))
-    break_time_label = info.get('break_time_label', '1:30 - 2:00')
-
-    css = """
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .timetable { border-collapse: collapse; width: 100%; table-layout: fixed; }
-        .timetable th, .timetable td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; height: 80px; position: relative; }
-        .period-header { font-size: 14px; font-weight: bold; }
-        .time-header { font-size: 10px; font-weight: normal; }
-        .day-label { font-size: 40px; font-weight: normal; width: 80px; }
-        .subject-id { font-size: 18px; font-weight: normal; display: block; margin-bottom: 5px; }
-        .teacher-id { font-size: 10px; position: absolute; bottom: 5px; right: 5px; }
-        .room-info { font-size: 10px; position: absolute; bottom: 5px; left: 5px; }
-        .break-cell { width: 40px; }
-        .home-room { text-align: right; font-size: 14px; margin-bottom: 5px; }
-        .header-title { text-align: center; margin-bottom: 0; }
-        .class-title { text-align: center; font-size: 48px; margin-top: 0; margin-bottom: 10px; }
-        .footer { width: 100%; margin-top: 20px; font-size: 12px; }
-        .footer-left { float: left; }
-        .footer-right { float: right; }
-        .clearfix::after { content: ""; clear: both; display: table; }
-    </style>
-    """
-    generated_time = datetime.now().strftime("%d/%m/%Y")
-
-    for class_id, cinfo in classes.items():
-        grid = [[None for _ in periods] for _ in days]
-        covered = [[False for _ in periods] for _ in days]
-        for sid, (t, r) in assignment.items():
-            s = sessions_by_id.get(sid)
-            if s and s.class_id == class_id:
-                di, pi = days.index(t.day), periods.index(t.period)
-                grid[di][pi] = sid
-
-        html = f"<html><head>{css}</head><body>"
-        html += f"<div class='header-title'>Final Term Routine (Term: {info.get('session_name', 'N/A')})</div>"
-        html += f"<div class='class-title'>{format_class_name(class_id)}</div>"
-        hr_id = home_room_map.get(class_id)
-        if hr_id:
-            formatted_hr = format_room_id(hr_id, rooms)
-            html += f"<div class='home-room'>R#{formatted_hr}</div>"
-
-        html += "<table class='timetable'><tr><th></th>"
-        for p in periods:
-            p_label, p_time = period_config.get(p, {}).get('label', f"{p}th"), period_config.get(p, {}).get('time', '')
-            html += f"<th><div class='period-header'>{p_label}</div><div class='time-header'>{p_time}</div></th>"
-            if p == break_period:
-                html += f"<th rowspan='{len(days) + 1}' class='break-cell'>Break<br><br><div class='time-header'>{break_time_label}</div></th>"
-        html += "</tr>"
-
-        for d_idx, d in enumerate(days):
-            html += f"<tr><td class='day-label'>{day_mapping.get(d, str(d))}</td>"
-            for p_idx, p in enumerate(periods):
-                if covered[d_idx][p_idx]: continue
-                sid = grid[d_idx][p_idx]
-                if sid:
-                    s = sessions_by_id[sid]
-                    lt_prefix = s.class_id[:2]
-                    subject = subjects.get((lt_prefix, s.subject_id))
-                    if not subject: subject = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
-
-                    colspan = subject.get('duration', 1)
-                    for i in range(colspan):
-                        if p_idx + i < len(periods): covered[d_idx][p_idx + i] = True
-                    t_val, cell_r_id = assignment[sid]
-                    room_info_display = ""
-                    if subject.get('required_room_type') == 'Lab':
-                        room_name = rooms.get(cell_r_id, {}).get('name', cell_r_id)
-                        room_info_display = f"<div class='room-info'>{room_name} #{cell_r_id}</div>"
-                    html += f"<td colspan='{colspan}'><span class='subject-id'>{s.subject_id}</span><div class='teacher-id'>{s.teacher_id}</div>{room_info_display}</td>"
-                else: html += "<td></td>"
-            html += "</tr>"
-        html += f"</table><div class='footer clearfix'><div class='footer-left'>Timetable generated:{generated_time}</div><div class='footer-right'>Cadence</div></div></body></html>"
-        with open(os.path.join(OUT_DIR, f'class_{class_id}_timetable.html'), 'w', encoding='utf-8') as f: f.write(html)
-
-    for teacher_id, tinfo in teachers.items():
-        grid, covered = [[None for _ in periods] for _ in days], [[False for _ in periods] for _ in days]
-        for sid, (t, r) in assignment.items():
-            s = sessions_by_id.get(sid)
-            if s and s.teacher_id == teacher_id:
-                di, pi = days.index(t.day), periods.index(t.period)
-                grid[di][pi] = sid
-
-        html = f"<html><head>{css}</head><body><div class='header-title'>Teacher Routine (Term: {info.get('session_name', 'N/A')})</div>"
-        html += f"<div class='class-title'>{teachers.get(teacher_id, {}).get('name', teacher_id)} ({teacher_id})</div>"
-        html += "<table class='timetable'><tr><th></th>"
-        for p in periods:
-            p_label, p_time = period_config.get(p, {}).get('label', f"{p}th"), period_config.get(p, {}).get('time', '')
-            html += f"<th><div class='period-header'>{p_label}</div><div class='time-header'>{p_time}</div></th>"
-            if p == break_period: html += f"<th rowspan='{len(days) + 1}' class='break-cell'>Break<br><br><div class='time-header'>{break_time_label}</div></th>"
-        html += "</tr>"
-
-        for d_idx, d in enumerate(days):
-            html += f"<tr><td class='day-label'>{day_mapping.get(d, str(d))}</td>"
-            for p_idx, p in enumerate(periods):
-                if covered[d_idx][p_idx]: continue
-                sid = grid[d_idx][p_idx]
-                if sid:
-                    s = sessions_by_id[sid]
-                    lt_prefix = s.class_id[:2]
-                    subject = subjects.get((lt_prefix, s.subject_id))
-                    if not subject: subject = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
-
-                    colspan = subject.get('duration', 1)
-                    for i in range(colspan):
-                        if p_idx + i < len(periods): covered[d_idx][p_idx + i] = True
-                    t_val, cell_r_id = assignment[sid]
-                    formatted_room = format_room_id(cell_r_id, rooms)
-                    html += f"<td colspan='{colspan}'><span class='subject-id'>{s.subject_id}</span><div class='teacher-id'>{s.class_id}</div><div class='room-info'>{formatted_room}</div></td>"
-                else: html += "<td></td>"
-            html += "</tr>"
-        html += f"</table><div class='footer clearfix'><div class='footer-left'>Timetable generated:{generated_time}</div><div class='footer-right'>Cadence</div></div></body></html>"
-        with open(os.path.join(OUT_DIR, f'teacher_{teacher_id}_timetable.html'), 'w', encoding='utf-8') as f: f.write(html)
-
-    combined_rows = [['session_id', 'class', 'subject', 'teacher', 'day', 'period', 'room']]
-    for sid, (t, r) in sorted(assignment.items(), key=lambda x: (x[1][0].day, x[1][0].period)):
+    # Save assignments
+    for sid, (t, r_id) in assignment.items():
         s = sessions_by_id.get(sid)
-        if s:
-            lt_prefix = s.class_id[:2]
-            subject = subjects.get((lt_prefix, s.subject_id))
-            if not subject: subject = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
-            combined_rows.append([sid, s.class_id, subject.get('name', 'N/A'), teachers.get(s.teacher_id, {}).get('name', 'N/A'), t.day, t.period, r])
-    write_csv(os.path.join(OUT_DIR, 'all_assignments.csv'), combined_rows[0], combined_rows[1:])
+        if not s: continue
+
+        lt_prefix = s.class_id[:2]
+        subject_data = subjects.get((lt_prefix, s.subject_id))
+        if not subject_data:
+             subject_data = next((v for k, v in subjects.items() if k[1] == s.subject_id), {})
+
+        teacher_name = teachers.get(s.teacher_id, {}).get('name', s.teacher_id)
+        class_name = classes.get(s.class_id, {}).get('name', s.class_id)
+        room_name = rooms.get(r_id, {}).get('name', r_id)
+
+        db_assignment = ScheduleAssignment(
+            schedule_id=new_schedule.id,
+            class_id=s.class_id,
+            class_name=class_name,
+            subject_id=s.subject_id,
+            subject_name=subject_data.get('name', 'N/A'),
+            teacher_id=s.teacher_id,
+            teacher_name=teacher_name,
+            room_id=r_id,
+            room_name=room_name,
+            day=t.day,
+            period=t.period,
+            duration=subject_data.get('duration', 1),
+            is_lab=(subject_data.get('required_room_type') == 'Lab'),
+            user_id="default_user"
+        )
+        db.add(db_assignment)
+
+    # Save home rooms
+    for class_id, room_id in home_room_map.items():
+        db_hr = ScheduleHomeRoom(
+            schedule_id=new_schedule.id,
+            class_id=class_id,
+            room_id=room_id,
+            user_id="default_user"
+        )
+        db.add(db_hr)
+
+    db.commit()
 
 # ------------------------------
 # Main
@@ -668,7 +579,7 @@ def run():
         try:
             home_room_map = assign_home_rooms(active_classes, rooms)
         except ValueError as e:
-            return {'status': f"ERROR: {e}", 'sessions_total': 0, 'sessions_scheduled': 0, 'output_dir': OUT_DIR}
+            return {'status': f"ERROR: {e}", 'sessions_total': 0, 'sessions_scheduled': 0}
 
         if not optional_included:
             optional_session_ids = set()
@@ -681,19 +592,18 @@ def run():
             sessions = [s for s in sessions if s.session_id not in optional_session_ids]
 
         if not sessions:
-            return {'status': "ERROR: No valid session data found.", 'sessions_total': 0, 'sessions_scheduled': 0, 'output_dir': OUT_DIR}
+            return {'status': "ERROR: No valid session data found.", 'sessions_total': 0, 'sessions_scheduled': 0}
 
         solver = ORTimetableSolver(sessions, timeslots, rooms, classes, teachers, subjects, unavailability, teacher_preferences, home_room_map, info)
         success, assignment = solver.solve()
 
         status = "SUCCESS: Timetable generated." if success else "ERROR: No solution found."
         if success:
-            create_output_tables(assignment, sessions, teachers, classes, rooms, subjects, timeslots, home_room_map, info)
-            write_home_rooms_csv(home_room_map, rooms)
+            save_schedule_to_db(db, assignment, sessions, teachers, classes, rooms, subjects, home_room_map)
 
         return {
             'status': status, 'sessions_total': len(sessions),
-            'sessions_scheduled': len(assignment), 'output_dir': OUT_DIR
+            'sessions_scheduled': len(assignment)
         }
     finally:
         db.close()
