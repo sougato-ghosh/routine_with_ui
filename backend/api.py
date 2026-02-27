@@ -8,13 +8,15 @@ import csv
 import main
 import data_validator
 from typing import List, Dict, Any
+from collections import defaultdict
 from bs4 import BeautifulSoup
 import json
 from sqlalchemy.orm import Session
 from database import SessionLocal, init_db, get_db
 from models import (
     Teacher, Room, Class, Subject, Curriculum,
-    TeacherUnavailability, TeacherPreference, SubjectOfAllSemester, Setting, Term
+    TeacherUnavailability, TeacherPreference, SubjectOfAllSemester, Setting, Term,
+    Schedule, ScheduleAssignment, ScheduleHomeRoom
 )
 
 app = FastAPI()
@@ -212,107 +214,153 @@ def run_scheduler():
     }
 
 @app.get("/schedules")
-def list_schedules():
-    if not os.path.exists(OUT_DIR):
-        return []
-    return sorted([f for f in os.listdir(OUT_DIR) if f.endswith(".html")])
+def list_schedules(db: Session = Depends(get_db)):
+    schedules = db.query(Schedule).order_by(Schedule.created_at.desc()).all()
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "created_at": s.created_at,
+            "is_active": s.is_active
+        } for s in schedules
+    ]
 
-@app.get("/schedules/{filename}")
-def get_schedule(filename: str):
-    if not filename.endswith(".html") or "/" in filename or "\\" in filename:
-        raise HTTPException(status_code=403, detail="Access denied")
+@app.get("/schedules/{schedule_id}/items")
+def get_schedule_items(schedule_id: int, db: Session = Depends(get_db)):
+    assignments = db.query(ScheduleAssignment).filter(ScheduleAssignment.schedule_id == schedule_id).all()
 
-    path = os.path.join(OUT_DIR, filename)
-    if not os.path.exists(path):
+    classes = sorted(list(set((a.class_id, a.class_name) for a in assignments)))
+    teachers = sorted(list(set((a.teacher_id, a.teacher_name) for a in assignments)))
+
+    return {
+        "classes": [{"id": c[0], "name": c[1]} for c in classes],
+        "teachers": [{"id": t[0], "name": t[1]} for t in teachers]
+    }
+
+@app.get("/schedules/{schedule_id}/view")
+def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(get_db)):
+    # type can be 'class' or 'teacher'
+    # id is the class_id or teacher_id
+
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
-    with open(path, "r", encoding="utf-8") as f:
-        html_content = f.read()
+    if type == 'class':
+        assignments = db.query(ScheduleAssignment).filter(
+            ScheduleAssignment.schedule_id == schedule_id,
+            ScheduleAssignment.class_id == id
+        ).all()
+        title = next((a.class_name for a in assignments), id)
+        home_room_rec = db.query(ScheduleHomeRoom).filter(
+            ScheduleHomeRoom.schedule_id == schedule_id,
+            ScheduleHomeRoom.class_id == id
+        ).first()
+        home_room = f"R#{home_room_rec.room_id}" if home_room_rec else ""
+    else:
+        assignments = db.query(ScheduleAssignment).filter(
+            ScheduleAssignment.schedule_id == schedule_id,
+            ScheduleAssignment.teacher_id == id
+        ).all()
+        title = next((a.teacher_name for a in assignments), id)
+        home_room = ""
 
-    soup = BeautifulSoup(html_content, "html.parser")
+    # Load settings for grid construction
+    settings_recs = db.query(Setting).all()
+    settings = {s.key: s.value for s in settings_recs}
 
-    header_title = soup.find(class_="header-title").get_text() if soup.find(class_="header-title") else ""
-    class_title = soup.find(class_="class-title").get_text() if soup.find(class_="class-title") else ""
-    home_room = soup.find(class_="home-room").get_text() if soup.find(class_="home-room") else ""
+    days_num = int(settings.get('days_num', 5))
+    periods_num = int(settings.get('periods_num', 9))
+    break_period = int(settings.get('break_period', 6))
 
-    table = soup.find("table", class_="timetable")
-    if not table:
-         raise HTTPException(status_code=500, detail="Invalid schedule format")
+    day_labels = settings.get('day_labels', '').split(',')
+    period_labels = settings.get('period_labels', '').split(',')
+    period_times = settings.get('period_times', '').split(',')
 
+    # Construct the table
     rows = []
-    tr_elements = table.find_all("tr")
-    occupied = {}
 
-    for r_idx, tr in enumerate(tr_elements):
-        row = []
-        cells = tr.find_all(["th", "td"])
-        cell_idx = 0
-        col_idx = 0
+    # Header row
+    header_row = [{"text": "", "is_header": True, "colspan": 1, "rowspan": 1}]
+    for p in range(1, periods_num + 1):
+        p_idx = p - 1
+        label = period_labels[p_idx].strip() if p_idx < len(period_labels) else f"{p}th"
+        time_val = period_times[p_idx].strip() if p_idx < len(period_times) else ""
 
-        while True:
-            if (r_idx, col_idx) in occupied:
-                occ_cell = occupied[(r_idx, col_idx)]
-                placeholder = {**occ_cell, "rowspan": 1}
-                row.append(placeholder)
-                col_idx += placeholder["colspan"]
+        header_row.append({
+            "text": f"{label}\n{time_val}",
+            "is_header": True,
+            "colspan": 1,
+            "rowspan": 1
+        })
+
+        if p == break_period:
+            header_row.append({
+                "text": f"Break\n{settings.get('break_time_label', '')}",
+                "is_header": True,
+                "colspan": 1,
+                "rowspan": days_num + 1,
+                "classes": ["break-cell"]
+            })
+    rows.append(header_row)
+
+    # Data rows
+    grid = defaultdict(dict)
+    for a in assignments:
+        grid[a.day][a.period] = a
+
+    for d in range(1, days_num + 1):
+        d_idx = d - 1
+        day_label = day_labels[d_idx].strip() if d_idx < len(day_labels) else str(d)
+        row = [{"text": day_label, "is_header": True, "colspan": 1, "rowspan": 1, "classes": ["day-label"]}]
+
+        skip = 0
+        for p in range(1, periods_num + 1):
+            if skip > 0:
+                skip -= 1
                 continue
 
-            if cell_idx >= len(cells):
-                break
+            assign = grid[d].get(p)
+            if assign:
+                cell = {
+                    "text": "",
+                    "is_header": False,
+                    "colspan": assign.duration,
+                    "rowspan": 1,
+                    "content": [
+                        {"type": "subject", "text": assign.subject_id},
+                        {"type": "teacher" if type == 'class' else "class", "text": assign.teacher_id if type == 'class' else assign.class_id}
+                    ]
+                }
+                if assign.is_lab:
+                    cell["content"].append({"type": "room", "text": f"{assign.room_name} #{assign.room_id}"})
+                elif type == 'teacher':
+                    cell["content"].append({"type": "room", "text": assign.room_id})
 
-            cell = cells[cell_idx]
-            cell_idx += 1
-
-            colspan = int(cell.get("colspan", 1))
-            rowspan = int(cell.get("rowspan", 1))
-
-            cell_data = {
-                "text": cell.get_text(strip=True),
-                "is_header": cell.name == "th",
-                "colspan": colspan,
-                "rowspan": rowspan,
-                "classes": cell.get("class", []),
-                "content": []
-            }
-
-            if not cell_data["is_header"]:
-                subj = cell.find(class_="subject-id")
-                teacher = cell.find(class_="teacher-id")
-                room = cell.find(class_="room-info")
-
-                if subj:
-                    cell_data["content"].append({"type": "subject", "text": subj.get_text(strip=True)})
-                if teacher:
-                    cell_data["content"].append({"type": "teacher", "text": teacher.get_text(strip=True)})
-                if room:
-                    cell_data["content"].append({"type": "room", "text": room.get_text(strip=True)})
-
-            if rowspan > 1:
-                for r_offset in range(1, rowspan):
-                    occupied[(r_idx + r_offset, col_idx)] = cell_data
-
-            current_cell_data = cell_data
-            if rowspan > 1:
-                current_cell_data = {**cell_data, "rowspan": 1}
-
-            row.append(current_cell_data)
-            col_idx += colspan
-
+                row.append(cell)
+                skip = assign.duration - 1
+            else:
+                row.append({"text": "", "is_header": False, "colspan": 1, "rowspan": 1})
         rows.append(row)
-
-    footer_left = soup.find(class_="footer-left").get_text() if soup.find(class_="footer-left") else ""
-    footer_right = soup.find(class_="footer-right").get_text() if soup.find(class_="footer-right") else ""
 
     return {
         "metadata": {
-            "header_title": header_title,
-            "class_title": class_title,
+            "header_title": f"Routine (Term: {settings.get('session_name', 'N/A')})",
+            "class_title": title,
             "home_room": home_room,
-            "footer_left": footer_left,
-            "footer_right": footer_right
+            "footer_left": f"Timetable generated: {schedule.created_at[:10]}",
+            "footer_right": "Cadence"
         },
         "table": rows
     }
+
+@app.delete("/schedules/{schedule_id}")
+def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
+    db.query(ScheduleAssignment).filter(ScheduleAssignment.schedule_id == schedule_id).delete()
+    db.query(ScheduleHomeRoom).filter(ScheduleHomeRoom.schedule_id == schedule_id).delete()
+    db.query(Schedule).filter(Schedule.id == schedule_id).delete()
+    db.commit()
+    return {"status": "success"}
 
 if __name__ == "__main__":
     import uvicorn
