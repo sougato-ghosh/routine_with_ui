@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getSchedules, getSchedule, viewSchedule, deleteSchedule, importCSV, exportCSV } from '../api';
+import { getSchedules, getSchedule, viewSchedule, deleteSchedule, deleteAllSchedules, importCSV, exportCSV } from '../api';
 import TimetableGrid from './TimetableGrid';
 
 function Schedules() {
@@ -78,6 +78,21 @@ function Schedules() {
     } catch (err) {
         console.error(err);
         alert("Failed to delete schedule");
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm("Are you sure you want to delete ALL schedule versions? This action cannot be undone and will clear all your generated routines.")) return;
+
+    try {
+        await deleteAllSchedules();
+        setScheduleList([]);
+        setSelectedScheduleId(null);
+        setScheduleMeta(null);
+        setGridData(null);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to delete all schedules");
     }
   };
 
@@ -212,8 +227,15 @@ function Schedules() {
             <>
               <div className="flex justify-end gap-3">
                  <button
-                   onClick={handleDelete}
+                   onClick={handleDeleteAll}
                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-6 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
+                 >
+                   <span className="material-icons text-sm">delete_sweep</span>
+                   Delete All Versions
+                 </button>
+                 <button
+                   onClick={handleDelete}
+                   className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 px-6 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
                  >
                    <span className="material-icons text-sm">delete</span>
                    Delete Version

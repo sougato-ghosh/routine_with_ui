@@ -289,6 +289,19 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success"}
 
+@app.delete("/schedules")
+def delete_all_schedules(db: Session = Depends(get_db)):
+    user_id = "default_user"
+    try:
+        # Explicitly delete assignments first, then schedules to handle any potential FK issues
+        db.query(ScheduleAssignment).filter(ScheduleAssignment.user_id == user_id).delete()
+        db.query(Schedule).filter(Schedule.user_id == user_id).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete all schedules: {str(e)}")
+    return {"status": "success"}
+
 @app.get("/schedules")
 def list_schedules(db: Session = Depends(get_db)):
     schedules = db.query(Schedule).order_by(Schedule.id.desc()).all()

@@ -14,6 +14,7 @@ export const runScheduler = () => api.post('/run-scheduler');
 export const getSchedules = () => api.get('/schedules');
 export const getSchedule = (id) => api.get(`/schedules/${id}`);
 export const deleteSchedule = (id) => api.delete(`/schedules/${id}`);
+export const deleteAllSchedules = () => api.delete('/schedules');
 export const viewSchedule = (scheduleId, type, id) => api.get(`/schedules/${scheduleId}/view`, { params: { type, id } });
 
 // Database-specific endpoints
