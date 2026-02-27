@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -99,6 +100,7 @@ class Schedule(Base):
     created_at = Column(String, nullable=False)
     # Store settings used at generation time as JSON
     settings_snapshot = Column(String)
+    assignments = relationship("ScheduleAssignment", backref="schedule", cascade="all, delete-orphan")
 
 class ScheduleAssignment(Base):
     __tablename__ = 'schedule_assignments'

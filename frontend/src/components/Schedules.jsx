@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getSchedules, getSchedule, viewSchedule } from '../api';
+import React, { useState, useEffect, useRef } from 'react';
+import { getSchedules, getSchedule, viewSchedule, deleteSchedule, importCSV, exportCSV } from '../api';
 import TimetableGrid from './TimetableGrid';
 
 function Schedules() {
@@ -11,15 +11,21 @@ function Schedules() {
   const [gridData, setGridData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [metaLoading, setMetaLoading] = useState(false);
+  const scheduleFileInputRef = useRef(null);
+  const assignmentFileInputRef = useRef(null);
 
   useEffect(() => {
+    fetchSchedules();
+  }, []);
+
+  const fetchSchedules = (selectFirst = true) => {
     getSchedules().then(res => {
       setScheduleList(res.data);
-      if (res.data.length > 0) {
+      if (selectFirst && res.data.length > 0 && !selectedScheduleId) {
         setSelectedScheduleId(res.data[0].id);
       }
     });
-  }, []);
+  };
 
   useEffect(() => {
     if (selectedScheduleId) {
@@ -44,15 +50,98 @@ function Schedules() {
       setLoading(true);
       viewSchedule(selectedScheduleId, viewType, selectedItem)
         .then(res => setGridData(res.data))
+        .catch(err => {
+            console.error(err);
+            setGridData(null);
+        })
         .finally(() => setLoading(false));
+    } else {
+        setGridData(null);
     }
   }, [selectedScheduleId, viewType, selectedItem]);
 
+  const handleDelete = async () => {
+    if (!selectedScheduleId) return;
+    if (!window.confirm("Are you sure you want to delete this schedule version?")) return;
+
+    try {
+        await deleteSchedule(selectedScheduleId);
+        const remaining = scheduleList.filter(s => s.id !== parseInt(selectedScheduleId));
+        setScheduleList(remaining);
+        if (remaining.length > 0) {
+            setSelectedScheduleId(remaining[0].id);
+        } else {
+            setSelectedScheduleId(null);
+            setScheduleMeta(null);
+            setGridData(null);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Failed to delete schedule");
+    }
+  };
+
+  const handleImportSchedules = async (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          try {
+              await importCSV('schedules.csv', file);
+              alert('Schedules imported. Now import assignments.');
+              fetchSchedules();
+          } catch (err) {
+              console.error(err);
+              alert('Failed to import schedules');
+          }
+      }
+  };
+
+  const handleImportAssignments = async (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          try {
+              await importCSV('schedule_assignments.csv', file);
+              alert('Assignments imported.');
+              fetchSchedules();
+          } catch (err) {
+              console.error(err);
+              alert('Failed to import assignments');
+          }
+      }
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="mb-8">
-        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Routine Hub</h2>
-        <p className="text-slate-500 mt-1">View and export generated timetables for classes and teachers.</p>
+      <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Routine Hub</h2>
+          <p className="text-slate-500 mt-1">View and export generated timetables for classes and teachers.</p>
+        </div>
+        <div className="flex items-center gap-2">
+            <input type="file" ref={scheduleFileInputRef} onChange={handleImportSchedules} className="hidden" accept=".csv" />
+            <input type="file" ref={assignmentFileInputRef} onChange={handleImportAssignments} className="hidden" accept=".csv" />
+
+            <div className="flex flex-col gap-1">
+                <button
+                    onClick={() => scheduleFileInputRef.current.click()}
+                    className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg transition-colors border border-slate-200"
+                >Import Schedules</button>
+                <button
+                    onClick={() => assignmentFileInputRef.current.click()}
+                    className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg transition-colors border border-slate-200"
+                >Import Assignments</button>
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <button
+                    onClick={() => exportCSV('schedules.csv')}
+                    className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg transition-colors border border-slate-200"
+                >Export Schedules</button>
+                <button
+                    onClick={() => exportCSV('schedule_assignments.csv')}
+                    className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg transition-colors border border-slate-200"
+                >Export Assignments</button>
+            </div>
+        </div>
       </header>
 
       <div className="grid grid-cols-12 gap-8">
@@ -121,7 +210,14 @@ function Schedules() {
             </div>
           ) : gridData ? (
             <>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
+                 <button
+                   onClick={handleDelete}
+                   className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-6 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
+                 >
+                   <span className="material-icons text-sm">delete</span>
+                   Delete Version
+                 </button>
                  <button
                    onClick={() => window.print()}
                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-slate-200 active:scale-95"

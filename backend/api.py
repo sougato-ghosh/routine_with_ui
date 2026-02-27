@@ -70,7 +70,9 @@ MODEL_MAP = {
     "teacher_unavailability.csv": TeacherUnavailability,
     "teacher_preferences.csv": TeacherPreference,
     "subjects_of_all_semester.csv": SubjectOfAllSemester,
-    "terms.csv": Term
+    "terms.csv": Term,
+    "schedules.csv": Schedule,
+    "schedule_assignments.csv": ScheduleAssignment
 }
 
 def to_dict(obj):
@@ -162,7 +164,12 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
     df = pd.read_csv(io.BytesIO(content))
 
     # Clear and replace
-    db.query(model).delete()
+    if filename == "schedules.csv":
+        # When schedules are replaced, we must also clear assignments due to FK
+        db.query(ScheduleAssignment).delete()
+        db.query(Schedule).delete()
+    else:
+        db.query(model).delete()
 
     # If curriculum is imported, filter by active terms
     if filename == "curriculum.csv":
@@ -241,12 +248,27 @@ def run_scheduler(db: Session = Depends(get_db)):
         full_snapshot['home_room_map'] = data['home_room_map']
         new_schedule.settings_snapshot = json.dumps(full_snapshot)
 
+        # Prune old schedules - keep only top 5 per user
+        user_id = "default_user"
+        old_schedules = db.query(Schedule).filter(Schedule.user_id == user_id).order_by(Schedule.id.desc()).offset(5).all()
+        for old in old_schedules:
+            db.delete(old)
+
         db.commit()
         res['schedule_id'] = new_schedule.id
 
     return {
         "result": res
     }
+
+@app.delete("/schedules/{schedule_id}")
+def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    db.delete(schedule)
+    db.commit()
+    return {"status": "success"}
 
 @app.get("/schedules")
 def list_schedules(db: Session = Depends(get_db)):
