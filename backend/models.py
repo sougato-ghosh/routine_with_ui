@@ -90,37 +90,3 @@ class Term(Base):
     user_id = Column(String, default="default_user")
     name = Column(String, unique=True, nullable=False) # e.g. "1-1", "1-2"
     is_active = Column(Boolean, default=True)
-
-class Schedule(Base):
-    __tablename__ = 'schedules'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String, default="default_user")
-    name = Column(String, nullable=False)
-    created_at = Column(String, nullable=False)
-    is_active = Column(Boolean, default=False)
-
-class ScheduleAssignment(Base):
-    __tablename__ = 'schedule_assignments'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String, default="default_user")
-    schedule_id = Column(Integer, ForeignKey('schedules.id'), nullable=False)
-    class_id = Column(String, nullable=False)
-    class_name = Column(String)
-    subject_id = Column(String, nullable=False)
-    subject_name = Column(String)
-    teacher_id = Column(String, nullable=False)
-    teacher_name = Column(String)
-    room_id = Column(String, nullable=False)
-    room_name = Column(String)
-    day = Column(Integer, nullable=False)
-    period = Column(Integer, nullable=False)
-    duration = Column(Integer, default=1)
-    is_lab = Column(Boolean, default=False)
-
-class ScheduleHomeRoom(Base):
-    __tablename__ = 'schedule_home_rooms'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String, default="default_user")
-    schedule_id = Column(Integer, ForeignKey('schedules.id'), nullable=False)
-    class_id = Column(String, nullable=False)
-    room_id = Column(String, nullable=False)
