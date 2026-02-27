@@ -8,7 +8,6 @@ env/
 venv/
 backend/__pycache__/
 backend/*.log
-backend/output/
 
 # IDE files
 .idea/

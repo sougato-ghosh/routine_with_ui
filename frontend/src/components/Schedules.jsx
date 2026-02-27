@@ -101,7 +101,7 @@ function Schedules() {
       const file = e.target.files?.[0];
       if (file) {
           try {
-              await importCSV('schedules.csv', file);
+              await importCSV('schedules', file);
               alert('Schedules imported. Now import assignments.');
               fetchSchedules();
           } catch (err) {
@@ -115,7 +115,7 @@ function Schedules() {
       const file = e.target.files?.[0];
       if (file) {
           try {
-              await importCSV('schedule_assignments.csv', file);
+              await importCSV('schedule_assignments', file);
               alert('Assignments imported.');
               fetchSchedules();
           } catch (err) {
@@ -149,11 +149,11 @@ function Schedules() {
 
             <div className="flex flex-col gap-1">
                 <button
-                    onClick={() => exportCSV('schedules.csv')}
+                    onClick={() => exportCSV('schedules')}
                     className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg transition-colors border border-slate-200"
                 >Export Schedules</button>
                 <button
-                    onClick={() => exportCSV('schedule_assignments.csv')}
+                    onClick={() => exportCSV('schedule_assignments')}
                     className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg transition-colors border border-slate-200"
                 >Export Assignments</button>
             </div>

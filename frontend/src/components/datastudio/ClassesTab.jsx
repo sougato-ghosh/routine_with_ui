@@ -29,7 +29,7 @@ function ClassesTab({ activeTerms = [] }) {
 
   const fetchClasses = () => {
     setLoading(true);
-    getData('classes.csv').then(res => {
+    getData('classes').then(res => {
       setClasses(res.data);
       setLoading(false);
     });
@@ -52,7 +52,7 @@ function ClassesTab({ activeTerms = [] }) {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await importCSV('classes.csv', file);
+        await importCSV('classes', file);
         fetchClasses();
         alert('Classes imported successfully');
       } catch (err) {
@@ -63,14 +63,14 @@ function ClassesTab({ activeTerms = [] }) {
   };
 
   const handleExport = () => {
-    exportCSV('classes.csv');
+    exportCSV('classes');
   };
 
   const handleDeleteClasses = async (idsToDelete) => {
     try {
       setLoading(true);
       const updatedClasses = classes.filter(c => !idsToDelete.includes(c.class_id));
-      await updateData('classes.csv', updatedClasses);
+      await updateData('classes', updatedClasses);
       setSelectedIds(selectedIds.filter(id => !idsToDelete.includes(id)));
       fetchClasses();
     } catch (err) {
@@ -87,7 +87,7 @@ function ClassesTab({ activeTerms = [] }) {
       return;
     }
     try {
-      await updateData('classes.csv', [...classes, newClass]);
+      await updateData('classes', [...classes, newClass]);
       setIsModalOpen(false);
       setNewClass({
         class_id: '',

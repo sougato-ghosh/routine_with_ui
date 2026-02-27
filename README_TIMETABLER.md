@@ -1,52 +1,47 @@
 
 # Timetabler (Python) — Minimal Cadence-like Core
 
-This folder contains a minimal, **run-ready** school timetabling tool implemented in pure Python (no external solvers). It supports:
+This repository contains a school timetabling tool with a FastAPI backend and a React frontend. It supports:
 
-- Classes, teachers, rooms, subjects
-- Weekly timeslots (e.g., 5 days × 6 periods)
-- Curriculum with required periods per week
-- Teacher unavailability
-- Room capacity checks and fixed-room assignments
-- Automatic schedule generation (backtracking + MRV)
-- Exports per-class and per-teacher timetables (CSV & HTML) and a combined assignment CSV
+- Classes, teachers, rooms, subjects, and terms
+- Weekly timeslots with customizable days and periods
+- Curriculum management with required periods per week
+- Teacher unavailability and preference management
+- Room capacity checks and home-room assignments
+- Automatic schedule generation using OR-Tools CP-SAT solver
+- Interactive web UI for data management and schedule viewing
 
-> Note: This is an educational, minimal alternative capturing **core features** of timetable generation. It is **not a full clone** of Cadence.
+## Data Management
 
-## How to run
+All data is managed through a SQLite database (`scheduler.db`). The system no longer relies on local CSV files in a `data/` folder for its operation, although it provides import and export functionality for CSV data via the web interface.
 
-1. Ensure you have Python 3.9+ and `pandas` installed.
-2. From this directory, run:
+### Database Tables
 
-```bash
-python main.py
-```
+- `teachers`: faculty members and their load limits
+- `classes`: student groups and sizes
+- `rooms`: physical locations, capacities, and types
+- `subjects`: course definitions and requirements
+- `curriculum`: assignments of teachers and subjects to classes
+- `teacher_unavailability` & `teacher_preferences`: scheduling constraints
+- `schedules` & `schedule_assignments`: generated timetable results
 
-The program will generate sample data under `./data` (if not present), solve a timetable, and write outputs to `./output`.
+## How to Run
 
-## Input CSVs (in `data/`)
+### Backend
+1. Ensure you have Python 3.9+ installed.
+2. Install dependencies: `pip install -r backend/requirements.txt`
+3. Run the API server: `python backend/api.py`
 
-- `teachers.csv`: `teacher_id,name`
-- `classes.csv`: `class_id,name,size`
-- `rooms.csv`: `room_id,name,capacity`
-- `subjects.csv`: `subject_id,name`
-- `curriculum.csv`: `class_id,subject_id,teacher_id,periods_per_week,room_id` (room_id optional/fixed)
-- `timeslots.csv`: `day,period` (integers)
-- `teacher_unavailability.csv`: `teacher_id,day,period`
-
-You can edit these to match your school.
-
-## Outputs (in `output/`)
-
-- `class_<CLASSID>_timetable.csv` and `.html`
-- `teacher_<TEACHERID>_timetable.csv` and `.html`
-- `all_assignments.csv` (flat list of all scheduled sessions)
+### Frontend
+1. Ensure you have Node.js installed.
+2. Navigate to the `frontend` directory.
+3. Install dependencies: `npm install`
+4. Run the development server: `npm run dev`
 
 ## Extending
 
-- Soft constraints (e.g., avoid last period) — add a score function for value ordering.
-- Split subjects into double periods — treat as grouped sessions.
-- Subject/teacher load balancing by day — implement additional heuristics.
-- GUI — can be added using Tkinter or a lightweight web UI (Flask) in a future step.
+- The system uses Google's OR-Tools for solving the constraints.
+- Soft constraints and penalties are used to optimize teacher preferences and scheduling rules.
+- The UI is built with React, Vite, and Tailwind CSS for a modern, responsive experience.
 
 Licensed under MIT for your convenience.

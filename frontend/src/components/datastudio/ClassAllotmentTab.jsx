@@ -92,7 +92,7 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
       });
 
       const updatedCurriculum = [...otherCurriculum, ...newEntries];
-      await updateData('curriculum.csv', updatedCurriculum);
+      await updateData('curriculum', updatedCurriculum);
       onSave(); // This triggers data reload in parent
     } catch (err) {
       console.error("Sync failed", err);
@@ -151,7 +151,7 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await importCSV('curriculum.csv', file);
+        await importCSV('curriculum', file);
         onSave();
         alert('Curriculum imported successfully');
       } catch (err) {
@@ -161,7 +161,7 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
     }
   };
 
-  const handleExport = () => exportCSV('curriculum.csv');
+  const handleExport = () => exportCSV('curriculum');
 
   const filteredTerms = allTerms.filter(t => t.toLowerCase().includes(termSearch.toLowerCase()));
   const termCode = selectedTerm.replace('-', '');

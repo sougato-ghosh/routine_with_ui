@@ -29,7 +29,7 @@ function Teachers() {
     setLoading(true);
     try {
       const [teachersRes, settingsRes] = await Promise.all([
-        getData('teachers.csv'),
+        getData('teachers'),
         getSettings()
       ]);
       setTeachers(teachersRes.data);
@@ -52,7 +52,7 @@ function Teachers() {
 
   const fetchTeachers = () => {
     setLoading(true);
-    getData('teachers.csv').then(res => {
+    getData('teachers').then(res => {
       setTeachers(res.data);
       setLoading(false);
     });
@@ -74,7 +74,7 @@ function Teachers() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await importCSV('teachers.csv', file);
+        await importCSV('teachers', file);
         fetchTeachers();
         alert('Teachers imported successfully');
       } catch (err) {
@@ -85,15 +85,15 @@ function Teachers() {
   };
 
   const handleExport = () => {
-    exportCSV('teachers.csv');
+    exportCSV('teachers');
   };
 
   const handleDeleteTeachers = async (idsToDelete) => {
     try {
       setLoading(true);
       const [unavailRes, prefRes] = await Promise.all([
-        getData('teacher_unavailability.csv'),
-        getData('teacher_preferences.csv')
+        getData('teacher_unavailability'),
+        getData('teacher_preferences')
       ]);
 
       const updatedTeachers = teachers.filter(t => !idsToDelete.includes(t.teacher_id));
@@ -101,9 +101,9 @@ function Teachers() {
       const updatedPref = prefRes.data.filter(p => !idsToDelete.includes(p.teacher_id));
 
       await Promise.all([
-        updateData('teachers.csv', updatedTeachers),
-        updateData('teacher_unavailability.csv', updatedUnavail),
-        updateData('teacher_preferences.csv', updatedPref)
+        updateData('teachers', updatedTeachers),
+        updateData('teacher_unavailability', updatedUnavail),
+        updateData('teacher_preferences', updatedPref)
       ]);
 
       setSelectedIds(selectedIds.filter(id => !idsToDelete.includes(id)));
@@ -118,7 +118,7 @@ function Teachers() {
   const handleAddTeacher = async (e) => {
     e.preventDefault();
     try {
-      await updateData('teachers.csv', [...teachers, newTeacher]);
+      await updateData('teachers', [...teachers, newTeacher]);
       setIsModalOpen(false);
       setNewTeacher({
         teacher_id: '',

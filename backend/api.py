@@ -29,9 +29,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(BASE_DIR, "output")
-
 # Initialize DB on startup
 init_db()
 
@@ -63,17 +60,17 @@ def ensure_default_settings():
 ensure_default_settings()
 
 MODEL_MAP = {
-    "teachers.csv": Teacher,
-    "rooms.csv": Room,
-    "classes.csv": Class,
-    "subjects.csv": Subject,
-    "curriculum.csv": Curriculum,
-    "teacher_unavailability.csv": TeacherUnavailability,
-    "teacher_preferences.csv": TeacherPreference,
-    "subjects_of_all_semester.csv": SubjectOfAllSemester,
-    "terms.csv": Term,
-    "schedules.csv": Schedule,
-    "schedule_assignments.csv": ScheduleAssignment
+    "teachers": Teacher,
+    "rooms": Room,
+    "classes": Class,
+    "subjects": Subject,
+    "curriculum": Curriculum,
+    "teacher_unavailability": TeacherUnavailability,
+    "teacher_preferences": TeacherPreference,
+    "subjects_of_all_semester": SubjectOfAllSemester,
+    "terms": Term,
+    "schedules": Schedule,
+    "schedule_assignments": ScheduleAssignment
 }
 
 def to_dict(obj):
@@ -102,26 +99,26 @@ def get_overview(db: Session = Depends(get_db)):
         "load": db.query(Curriculum).count(),
     }
 
-@app.get("/data/{filename}")
-def get_data(filename: str, db: Session = Depends(get_db)):
-    if filename not in MODEL_MAP:
+@app.get("/data/{table_name}")
+def get_data(table_name: str, db: Session = Depends(get_db)):
+    if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
-    model = MODEL_MAP[filename]
+    model = MODEL_MAP[table_name]
     items = db.query(model).all()
     return [to_dict(item) for item in items]
 
-@app.post("/data/{filename}")
-def update_data(filename: str, data: List[Dict[Any, Any]], db: Session = Depends(get_db)):
-    if filename not in MODEL_MAP:
+@app.post("/data/{table_name}")
+def update_data(table_name: str, data: List[Dict[Any, Any]], db: Session = Depends(get_db)):
+    if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
-    model = MODEL_MAP[filename]
+    model = MODEL_MAP[table_name]
 
     try:
         # Simple strategy: clear and replace
         db.query(model).delete()
 
         # If terms are updated, also clear curriculum
-        if filename == "terms.csv":
+        if table_name == "terms":
             db.query(Curriculum).delete()
 
         for item in data:
@@ -136,11 +133,11 @@ def update_data(filename: str, data: List[Dict[Any, Any]], db: Session = Depends
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return {"status": "success"}
 
-@app.get("/export/{filename}")
-def export_data(filename: str, db: Session = Depends(get_db)):
-    if filename not in MODEL_MAP:
+@app.get("/export/{table_name}")
+def export_data(table_name: str, db: Session = Depends(get_db)):
+    if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
-    model = MODEL_MAP[filename]
+    model = MODEL_MAP[table_name]
     items = db.query(model).all()
 
     output = io.StringIO()
@@ -159,21 +156,21 @@ def export_data(filename: str, db: Session = Depends(get_db)):
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode()),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={table_name}.csv"}
     )
 
-@app.post("/import/{filename}")
-async def import_data(filename: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if filename not in MODEL_MAP:
+@app.post("/import/{table_name}")
+async def import_data(table_name: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
-    model = MODEL_MAP[filename]
+    model = MODEL_MAP[table_name]
 
     content = await file.read()
     df = pd.read_csv(io.BytesIO(content))
 
     try:
         # Clear and replace
-        if filename == "schedules.csv":
+        if table_name == "schedules":
             # When schedules are replaced, we must also clear assignments due to FK
             db.query(ScheduleAssignment).delete()
             db.query(Schedule).delete()
@@ -181,7 +178,7 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
             db.query(model).delete()
 
         # If curriculum is imported, filter by active terms
-        if filename == "curriculum.csv":
+        if table_name == "curriculum":
             active_terms = db.query(Term).filter(Term.is_active == True).all()
             active_codes = [t.name.replace('-', '') for t in active_terms]
 
@@ -200,7 +197,7 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
         db.rollback()
         detail = str(e.orig)
         if "FOREIGN KEY constraint failed" in detail:
-            if filename == "schedule_assignments.csv":
+            if table_name == "schedule_assignments":
                 detail = "Foreign key constraint failed. Please ensure the referenced Schedule ID exists before importing assignments."
         raise HTTPException(status_code=400, detail=f"Database integrity error: {detail}")
     except Exception as e:
