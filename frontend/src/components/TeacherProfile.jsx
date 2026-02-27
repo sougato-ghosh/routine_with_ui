@@ -11,6 +11,17 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [settings, setSettings] = useState({
+    days_num: 5,
+    periods_num: 9,
+    day_labels: 'Sa,Su,Mo,Tu,We',
+    period_labels: '1st,2nd,3rd,4th,5th,6th,7th,8th,9th',
+    break_period: 6
+  });
+  const [selectionMode, setSelectionMode] = useState('preferred'); // 'preferred' or 'unavailable'
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragValue, setDragValue] = useState(null); // 'preferred', 'unavailable', or 'neutral'
+
   useEffect(() => {
     loadData();
   }, [initialTeacher.teacher_id]);
@@ -23,12 +34,23 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
     ]);
     setUnavailability(unavailRes.data.filter(u => u.teacher_id === teacher.teacher_id));
     setPreferences(prefRes.data.filter(p => p.teacher_id === teacher.teacher_id));
-    if (settingsRes.data.seniority_levels) {
-      setSeniorityLevels(settingsRes.data.seniority_levels.split(',').map(s => s.trim()));
+
+    const s = settingsRes.data;
+    if (s.seniority_levels) {
+      setSeniorityLevels(s.seniority_levels.split(',').map(s => s.trim()));
     }
-    if (settingsRes.data.departments) {
-      setDepartments(settingsRes.data.departments.split(',').map(s => s.trim()));
+    if (s.departments) {
+      setDepartments(s.departments.split(',').map(s => s.trim()));
     }
+
+    setSettings({
+      days_num: parseInt(s.days_num || 5),
+      periods_num: parseInt(s.periods_num || 9),
+      day_labels: s.day_labels || 'Sa,Su,Mo,Tu,We',
+      period_labels: s.period_labels || '1st,2nd,3rd,4th,5th,6th,7th,8th,9th',
+      break_period: parseInt(s.break_period || 6)
+    });
+
     setLoading(false);
   };
 
@@ -91,28 +113,55 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
     }
   };
 
-  const addUnavailability = () => {
-    setUnavailability([...unavailability, { teacher_id: teacher.teacher_id, day: 1, period: 1 }]);
+  const getCellState = (day, period) => {
+    if (unavailability.some(u => u.day === day && u.period === period)) return 'unavailable';
+    if (preferences.some(p => p.day === day && p.period === period)) return 'preferred';
+    return 'neutral';
   };
 
-  const addPreference = () => {
-    setPreferences([...preferences, { teacher_id: teacher.teacher_id, day: 1, period: 1 }]);
+  const toggleCell = (day, period, targetValue) => {
+    // targetValue can be 'preferred', 'unavailable', or 'neutral'
+    let nextUnavail = unavailability.filter(u => !(u.day === day && u.period === period));
+    let nextPref = preferences.filter(p => !(p.day === day && p.period === period));
+
+    if (targetValue === 'unavailable') {
+      nextUnavail.push({ teacher_id: teacher.teacher_id, day, period });
+    } else if (targetValue === 'preferred') {
+      nextPref.push({ teacher_id: teacher.teacher_id, day, period });
+    }
+
+    setUnavailability(nextUnavail);
+    setPreferences(nextPref);
   };
 
-  const updateUnavail = (index, key, value) => {
-    const next = [...unavailability];
-    next[index][key] = parseInt(value);
-    setUnavailability(next);
+  const handleMouseDown = (day, period) => {
+    const currentState = getCellState(day, period);
+    let target;
+    if (selectionMode === 'preferred') {
+      target = currentState === 'preferred' ? 'neutral' : 'preferred';
+    } else {
+      target = currentState === 'unavailable' ? 'neutral' : 'unavailable';
+    }
+    setDragValue(target);
+    setIsDragging(true);
+    toggleCell(day, period, target);
   };
 
-  const updatePref = (index, key, value) => {
-    const next = [...preferences];
-    next[index][key] = parseInt(value);
-    setPreferences(next);
+  const handleMouseEnter = (day, period) => {
+    if (isDragging) {
+      toggleCell(day, period, dragValue);
+    }
   };
 
-  const removeUnavail = (index) => setUnavailability(unavailability.filter((_, i) => i !== index));
-  const removePref = (index) => setPreferences(preferences.filter((_, i) => i !== index));
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragValue(null);
+  };
+
+  useEffect(() => {
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -237,65 +286,124 @@ function TeacherProfile({ teacher: initialTeacher, onBack }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <section className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold">Unavailability</h3>
-                <button onClick={addUnavailability} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-                  <span className="material-icons text-sm">add</span> Add
+          <section className="bg-white rounded-xl p-8 shadow-sm border border-slate-200">
+            <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Availability & Preferences</h3>
+                <p className="text-slate-500 text-sm mt-1">Select a mode and click or drag on the table to mark periods.</p>
+              </div>
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => setSelectionMode('preferred')}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all",
+                    selectionMode === 'preferred'
+                      ? "bg-green-500 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <div className={cn("w-3 h-3 rounded-full border border-white/20", selectionMode === 'preferred' ? "bg-white" : "bg-green-500")}></div>
+                  Preferred
+                </button>
+                <button
+                  onClick={() => setSelectionMode('unavailable')}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all",
+                    selectionMode === 'unavailable'
+                      ? "bg-red-500 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <div className={cn("w-3 h-3 rounded-full border border-white/20", selectionMode === 'unavailable' ? "bg-white" : "bg-red-500")}></div>
+                  Unavailable
                 </button>
               </div>
-              <div className="space-y-3">
-                {unavailability.map((u, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <div className="flex-1 grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Day</label>
-                        <input type="number" min="1" max="7" value={u.day} onChange={(e) => updateUnavail(i, 'day', e.target.value)} className="w-full text-sm border-none bg-white rounded px-2 py-1" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
-                        <input type="number" min="1" max="10" value={u.period} onChange={(e) => updateUnavail(i, 'period', e.target.value)} className="w-full text-sm border-none bg-white rounded px-2 py-1" />
-                      </div>
-                    </div>
-                    <button onClick={() => removeUnavail(i)} className="text-slate-300 hover:text-red-500 transition-colors">
-                      <span className="material-icons">delete</span>
-                    </button>
-                  </div>
-                ))}
-                {unavailability.length === 0 && <p className="text-slate-400 italic text-sm text-center py-4">No unavailability records</p>}
-              </div>
-            </section>
+            </div>
 
-            <section className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold">Preferences</h3>
-                <button onClick={addPreference} className="text-primary text-sm font-bold flex items-center gap-1 hover:underline">
-                  <span className="material-icons text-sm">add</span> Add
-                </button>
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full border-collapse select-none">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="border-b border-r border-slate-200 p-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16">Day / Per</th>
+                    {Array.from({ length: settings.periods_num }).map((_, i) => {
+                      const period = i + 1;
+                      if (period === settings.break_period) return null;
+                      const label = settings.period_labels.split(',')[i] || `${period}th`;
+                      return (
+                        <th key={period} className="border-b border-r border-slate-200 p-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[80px]">
+                          {label}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: settings.days_num }).map((_, di) => {
+                    const day = di + 1;
+                    const dayLabel = settings.day_labels.split(',')[di] || `${day}`;
+                    return (
+                      <tr key={day}>
+                        <td className="border-b border-r border-slate-200 p-3 bg-slate-50 font-bold text-slate-600 text-sm text-center">
+                          {dayLabel}
+                        </td>
+                        {Array.from({ length: settings.periods_num }).map((_, pi) => {
+                          const period = pi + 1;
+                          if (period === settings.break_period) return null;
+                          const state = getCellState(day, period);
+                          return (
+                            <td
+                              key={period}
+                              onMouseDown={() => handleMouseDown(day, period)}
+                              onMouseEnter={() => handleMouseEnter(day, period)}
+                              className={cn(
+                                "border-b border-r border-slate-200 p-0 h-14 transition-colors cursor-pointer relative group",
+                                state === 'preferred' && "bg-green-100 hover:bg-green-200",
+                                state === 'unavailable' && "bg-red-100 hover:bg-red-200",
+                                state === 'neutral' && "bg-white hover:bg-slate-50"
+                              )}
+                            >
+                              {state === 'preferred' && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="material-icons text-green-500 text-xl">check_circle</span>
+                                </div>
+                              )}
+                              {state === 'unavailable' && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="material-icons text-red-500 text-xl">block</span>
+                                </div>
+                              )}
+                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity flex items-center justify-center">
+                                {selectionMode === 'preferred' && state !== 'preferred' && <span className="material-icons text-green-300 text-xl">add_circle</span>}
+                                {selectionMode === 'unavailable' && state !== 'unavailable' && <span className="material-icons text-red-300 text-xl">remove_circle</span>}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-6 text-xs font-medium text-slate-500 bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-green-100 border border-green-200"></div>
+                <span>Preferred Period</span>
               </div>
-              <div className="space-y-3">
-                {preferences.map((p, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <div className="flex-1 grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Day</label>
-                        <input type="number" min="1" max="7" value={p.day} onChange={(e) => updatePref(i, 'day', e.target.value)} className="w-full text-sm border-none bg-white rounded px-2 py-1" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
-                        <input type="number" min="1" max="10" value={p.period} onChange={(e) => updatePref(i, 'period', e.target.value)} className="w-full text-sm border-none bg-white rounded px-2 py-1" />
-                      </div>
-                    </div>
-                    <button onClick={() => removePref(i)} className="text-slate-300 hover:text-red-500 transition-colors">
-                      <span className="material-icons">delete</span>
-                    </button>
-                  </div>
-                ))}
-                {preferences.length === 0 && <p className="text-slate-400 italic text-sm text-center py-4">No preference records</p>}
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-red-100 border border-red-200"></div>
+                <span>Unavailable Period</span>
               </div>
-            </section>
-          </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-white border border-slate-200"></div>
+                <span>No Preference</span>
+              </div>
+              <div className="ml-auto text-slate-400 italic">
+                Tip: You can click and drag to mark multiple cells.
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
