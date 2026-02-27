@@ -11,6 +11,7 @@ from typing import List, Dict, Any
 import json
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from database import SessionLocal, init_db, get_db
 from models import (
     Teacher, Room, Class, Subject, Curriculum,
@@ -115,17 +116,24 @@ def update_data(filename: str, data: List[Dict[Any, Any]], db: Session = Depends
         raise HTTPException(status_code=403, detail="Access denied")
     model = MODEL_MAP[filename]
 
-    # Simple strategy: clear and replace
-    db.query(model).delete()
+    try:
+        # Simple strategy: clear and replace
+        db.query(model).delete()
 
-    # If terms are updated, also clear curriculum
-    if filename == "terms.csv":
-        db.query(Curriculum).delete()
+        # If terms are updated, also clear curriculum
+        if filename == "terms.csv":
+            db.query(Curriculum).delete()
 
-    for item in data:
-        valid_data = clean_data(item, model)
-        db.add(model(**valid_data, user_id="default_user"))
-    db.commit()
+        for item in data:
+            valid_data = clean_data(item, model)
+            db.add(model(**valid_data, user_id="default_user"))
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Database integrity error: {str(e.orig)}")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return {"status": "success"}
 
 @app.get("/export/{filename}")
@@ -163,30 +171,41 @@ async def import_data(filename: str, file: UploadFile = File(...), db: Session =
     content = await file.read()
     df = pd.read_csv(io.BytesIO(content))
 
-    # Clear and replace
-    if filename == "schedules.csv":
-        # When schedules are replaced, we must also clear assignments due to FK
-        db.query(ScheduleAssignment).delete()
-        db.query(Schedule).delete()
-    else:
-        db.query(model).delete()
+    try:
+        # Clear and replace
+        if filename == "schedules.csv":
+            # When schedules are replaced, we must also clear assignments due to FK
+            db.query(ScheduleAssignment).delete()
+            db.query(Schedule).delete()
+        else:
+            db.query(model).delete()
 
-    # If curriculum is imported, filter by active terms
-    if filename == "curriculum.csv":
-        active_terms = db.query(Term).filter(Term.is_active == True).all()
-        active_codes = [t.name.replace('-', '') for t in active_terms]
+        # If curriculum is imported, filter by active terms
+        if filename == "curriculum.csv":
+            active_terms = db.query(Term).filter(Term.is_active == True).all()
+            active_codes = [t.name.replace('-', '') for t in active_terms]
 
-        def is_active(row):
-            cid = str(row.get('class_id', ''))
-            return any(cid.startswith(code) for code in active_codes)
+            def is_active(row):
+                cid = str(row.get('class_id', ''))
+                return any(cid.startswith(code) for code in active_codes)
 
-        mask = df.apply(is_active, axis=1)
-        df = df[mask]
+            mask = df.apply(is_active, axis=1)
+            df = df[mask]
 
-    for _, row in df.iterrows():
-        valid_data = clean_data(row.to_dict(), model)
-        db.add(model(**valid_data, user_id="default_user"))
-    db.commit()
+        for _, row in df.iterrows():
+            valid_data = clean_data(row.to_dict(), model)
+            db.add(model(**valid_data, user_id="default_user"))
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        detail = str(e.orig)
+        if "FOREIGN KEY constraint failed" in detail:
+            if filename == "schedule_assignments.csv":
+                detail = "Foreign key constraint failed. Please ensure the referenced Schedule ID exists before importing assignments."
+        raise HTTPException(status_code=400, detail=f"Database integrity error: {detail}")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return {"status": "success"}
 
 @app.get("/settings")
