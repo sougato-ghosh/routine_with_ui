@@ -348,7 +348,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
                 "text": f"Break {settings.get('break_time_label', '')}",
                 "is_header": True,
                 "colspan": 1,
-                "rowspan": days_num + 1,
+                "rowspan": 1,
                 "classes": ["break-cell"],
                 "content": []
             })
@@ -366,44 +366,52 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
 
         covered_periods = set()
         for p in range(1, periods_num + 1):
-            if p in covered_periods:
-                continue
+            if p not in covered_periods:
+                a = grid.get((d, p))
+                if a:
+                    lt_prefix = a.class_id[:2]
+                    duration = subject_durations.get((lt_prefix, a.subject_id)) or subject_durations_fallback.get(a.subject_id, 1)
 
-            a = grid.get((d, p))
-            if a:
-                lt_prefix = a.class_id[:2]
-                duration = subject_durations.get((lt_prefix, a.subject_id)) or subject_durations_fallback.get(a.subject_id, 1)
+                    content = [
+                        {"type": "subject", "text": a.subject_id},
+                        {"type": "teacher", "text": a.teacher_id if type == 'class' else a.class_id}
+                    ]
+                    # If it's class view, show room. If teacher view, show room.
+                    # In original: class view showed room if lab. teacher view showed room.
+                    # Let's just always show room if available
+                    if a.room_id:
+                        content.append({"type": "room", "text": a.room_id})
 
-                content = [
-                    {"type": "subject", "text": a.subject_id},
-                    {"type": "teacher", "text": a.teacher_id if type == 'class' else a.class_id}
-                ]
-                # If it's class view, show room. If teacher view, show room.
-                # In original: class view showed room if lab. teacher view showed room.
-                # Let's just always show room if available
-                if a.room_id:
-                    content.append({"type": "room", "text": a.room_id})
+                    row.append({
+                        "text": "",
+                        "is_header": False,
+                        "colspan": duration,
+                        "rowspan": 1,
+                        "classes": [],
+                        "content": content
+                    })
+                    for i in range(duration):
+                        covered_periods.add(p + i)
+                else:
+                    row.append({
+                        "text": "",
+                        "is_header": False,
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "classes": [],
+                        "content": []
+                    })
+                    covered_periods.add(p)
 
-                row.append({
-                    "text": "",
-                    "is_header": False,
-                    "colspan": duration,
-                    "rowspan": 1,
-                    "classes": [],
-                    "content": content
-                })
-                for i in range(duration):
-                    covered_periods.add(p + i)
-            else:
+            if p == break_period:
                 row.append({
                     "text": "",
                     "is_header": False,
                     "colspan": 1,
                     "rowspan": 1,
-                    "classes": [],
+                    "classes": ["break-cell"],
                     "content": []
                 })
-                covered_periods.add(p)
         table.append(row)
 
     return {
