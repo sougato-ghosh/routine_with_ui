@@ -20,16 +20,16 @@ logging.basicConfig(
     filemode='w'
 )
 
-def load_data_from_db(db: Session):
+def load_data_from_db(db: Session, user_id: str = "default_user"):
     """Loads all necessary data from the database into a dictionary of DataFrames."""
     data = {}
     try:
-        data['teachers.csv'] = pd.read_sql(db.query(Teacher).statement, db.bind)
-        data['rooms.csv'] = pd.read_sql(db.query(Room).statement, db.bind)
-        data['classes.csv'] = pd.read_sql(db.query(Class).statement, db.bind)
-        data['subjects.csv'] = pd.read_sql(db.query(Subject).statement, db.bind)
-        data['curriculum.csv'] = pd.read_sql(db.query(Curriculum).statement, db.bind)
-        data['subjects_of_all_semester.csv'] = pd.read_sql(db.query(SubjectOfAllSemester).statement, db.bind)
+        data['teachers.csv'] = pd.read_sql(db.query(Teacher).filter(Teacher.user_id == user_id).statement, db.bind)
+        data['rooms.csv'] = pd.read_sql(db.query(Room).filter(Room.user_id == user_id).statement, db.bind)
+        data['classes.csv'] = pd.read_sql(db.query(Class).filter(Class.user_id == user_id).statement, db.bind)
+        data['subjects.csv'] = pd.read_sql(db.query(Subject).filter(Subject.user_id == user_id).statement, db.bind)
+        data['curriculum.csv'] = pd.read_sql(db.query(Curriculum).filter(Curriculum.user_id == user_id).statement, db.bind)
+        data['subjects_of_all_semester.csv'] = pd.read_sql(db.query(SubjectOfAllSemester).filter(SubjectOfAllSemester.user_id == user_id).statement, db.bind)
         return data, True
     except Exception as e:
         logging.error(f"CRITICAL: Failed to load data from database: {e}")
@@ -153,11 +153,11 @@ def check_course_credits(datasets):
                 issues.append({"type": "warning", "category": "Course Credit", "message": msg})
     return issues
 
-def validate_data():
+def validate_data(user_id: str = "default_user"):
     db = SessionLocal()
     all_issues = []
     try:
-        datasets, success = load_data_from_db(db)
+        datasets, success = load_data_from_db(db, user_id)
         if not success:
             msg = "Critical error: Data could not be loaded from database."
             logging.error(msg)
@@ -166,7 +166,7 @@ def validate_data():
         all_issues.extend(check_referential_integrity(datasets))
         all_issues.extend(check_duplicate_ids(datasets))
 
-        settings = {s.key: s.value for s in db.query(Setting).all()}
+        settings = {s.key: s.value for s in db.query(Setting).filter(Setting.user_id == user_id).all()}
         days_per_week = int(settings.get('days_num', 5))
         all_issues.extend(check_teacher_workload(datasets, days_per_week))
 
