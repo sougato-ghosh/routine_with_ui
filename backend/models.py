@@ -105,6 +105,7 @@ class Schedule(Base):
 class ScheduleAssignment(Base):
     __tablename__ = 'schedule_assignments'
     id = Column(Integer, primary_key=True)
+    user_id = Column(String, default="default_user")
     schedule_id = Column(Integer, ForeignKey('schedules.id'), nullable=False)
     session_id = Column(String)
     class_id = Column(String)
