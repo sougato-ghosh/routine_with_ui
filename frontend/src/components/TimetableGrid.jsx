@@ -23,12 +23,12 @@ function TimetableGrid({ data }) {
   const { metadata, table } = data;
 
   return (
-    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="text-center mb-6">
         <div className="text-sm font-medium text-slate-500 uppercase tracking-widest mb-1">
           {metadata.header_title}
         </div>
-        <div className="text-5xl font-black text-slate-900 mb-4 tracking-tighter">
+        <div className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">
           {metadata.class_title}
         </div>
         {metadata.home_room && (
@@ -53,9 +53,9 @@ function TimetableGrid({ data }) {
                       colSpan={cell.colspan}
                       rowSpan={cell.rowspan}
                       className={cn(
-                        "bg-slate-100 text-slate-500 font-bold p-3 text-xs uppercase tracking-wider rounded-lg border border-slate-200",
-                        cidx === 0 && "w-20 bg-slate-600 text-white border-slate-700",
-                        isBreakCell && "min-w-0 w-10 text-slate-400 text-[10px] font-bold uppercase tracking-widest [writing-mode:vertical-lr]"
+                        "bg-slate-100 text-slate-500 font-bold p-2 text-[10px] uppercase tracking-wider rounded-lg border border-slate-200",
+                        cidx === 0 && "w-14 bg-slate-600 text-white border-slate-700",
+                        isBreakCell && "min-w-0 w-8 text-slate-400 text-[9px] font-bold uppercase tracking-widest [writing-mode:vertical-lr]"
                       )}
                     >
                       {isBreakCell ? (
@@ -95,9 +95,9 @@ function TimetableGrid({ data }) {
                         backgroundColor: subject ? getSubjectColor(subject) : undefined
                       }}
                       className={cn(
-                        "h-24 min-w-[120px] p-2 rounded-lg border border-slate-200 align-top transition-all",
-                        isDayCell && "min-w-0 w-20 bg-slate-600! text-white! font-bold text-3xl flex items-center justify-center border-slate-700!",
-                        isBreakCell && "min-w-0 w-10 bg-white",
+                        "h-20 min-w-[75px] p-1.5 rounded-lg border border-slate-200 align-top transition-all",
+                        isDayCell && "min-w-0 w-14 bg-slate-600! text-white! font-bold text-2xl flex items-center justify-center border-slate-700!",
+                        isBreakCell && "min-w-0 w-8 bg-white",
                         !isDayCell && !isBreakCell && !subject && "bg-white"
                       )}
                     >

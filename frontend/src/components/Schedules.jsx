@@ -3,6 +3,7 @@ import { getSchedules, getSchedule, viewSchedule, deleteSchedule, deleteAllSched
 import TimetableGrid from './TimetableGrid';
 
 function Schedules() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [scheduleList, setScheduleList] = useState([]);
   const [selectedScheduleId, setSelectedScheduleId] = useState(null);
   const [scheduleMeta, setScheduleMeta] = useState(null);
@@ -159,9 +160,9 @@ function Schedules() {
         </div>
       </header>
 
-      <div className="grid grid-cols-12 gap-8">
+      <div className="flex gap-4 items-start relative">
         {/* Sidebar for selection */}
-        <div className="col-span-3 space-y-6">
+        <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} space-y-6 flex-shrink-0`}>
           {/* Schedule Version Selection */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
@@ -216,8 +217,17 @@ function Schedules() {
           </div>
         </div>
 
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className={`absolute z-10 top-0 left-0 transition-all duration-300 p-2 bg-white border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 text-slate-400 hover:text-primary ${isSidebarOpen ? 'translate-x-60 -translate-y-2' : '-translate-x-2 -translate-y-2'}`}
+          title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+        >
+          <span className="material-icons text-sm">{isSidebarOpen ? 'chevron_left' : 'chevron_right'}</span>
+        </button>
+
         {/* Main content area */}
-        <div className="col-span-9 space-y-6">
+        <div className="flex-1 space-y-6 min-w-0">
           {loading ? (
             <div className="h-96 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-4 text-slate-400 font-medium">
               <span className="material-icons animate-spin text-primary text-4xl">sync</span>
