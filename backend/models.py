@@ -46,6 +46,7 @@ class Subject(Base):
     subject_id = Column(String, nullable=False)
     dept = Column(String)
     name = Column(String, nullable=False)
+    credit = Column(Float, default=3.0)
     duration = Column(Integer, default=1)
     required_room_type = Column(String)
     viable_rooms = Column(String) # Comma-separated list of room IDs
