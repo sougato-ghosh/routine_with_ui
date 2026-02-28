@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { updateData, importCSV, exportCSV } from '../../api';
 import { cn } from '../../utils';
 
-function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelectedCourse, teachers, classes, curriculum, onSave }) {
+function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelectedCourse, teachers, departments = [], classes, curriculum, onSave }) {
   const allTerms = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'].filter(t => activeTerms.includes(t));
   const [selectedTerm, setSelectedTerm] = useState(allTerms[0] || '');
   const [isCourseSidebarOpen, setIsCourseSidebarOpen] = useState(true);
   const [localAllotments, setLocalAllotments] = useState([]);
-  const [saving, setSaving] = useState(false);
   const [selectedAllotmentIds, setSelectedAllotmentIds] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [modalDept, setModalDept] = useState('All');
   const [newAllotment, setNewAllotment] = useState({
     teacher_id: '',
     sections: [],
@@ -32,7 +32,7 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
         setSelectedCourse(null);
       }
     }
-  }, [selectedTerm, courses]);
+  }, [selectedTerm, courses, selectedCourse, setSelectedCourse]);
 
   // When selectedCourse or curriculum changes, update local allotments
   useEffect(() => {
@@ -124,6 +124,7 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
     setSelectedAllotmentIds([]);
     await syncCurriculum(next);
   };
+
 
   const handleAddAllotment = async (e) => {
     e.preventDefault();
@@ -354,7 +355,14 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
               )}
 
               <button
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={() => {
+                  if (selectedCourse?.dept && departments.includes(selectedCourse.dept)) {
+                    setModalDept(selectedCourse.dept);
+                  } else {
+                    setModalDept('All');
+                  }
+                  setIsAddModalOpen(true);
+                }}
                 className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 group"
               >
                 <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">add_circle</span>
@@ -381,19 +389,39 @@ function ClassAllotmentTab({ activeTerms = [], courses, selectedCourse, setSelec
               </button>
             </div>
             <form onSubmit={handleAddAllotment} className="p-6 space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Teacher</label>
-                <select
-                  required
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
-                  value={newAllotment.teacher_id}
-                  onChange={e => setNewAllotment({...newAllotment, teacher_id: e.target.value})}
-                >
-                  <option value="">Choose a teacher...</option>
-                  {teachers.map(t => (
-                    <option key={t.teacher_id} value={t.teacher_id}>{t.name} ({t.teacher_id})</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="col-span-1 space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dept</label>
+                  <select
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                    value={modalDept}
+                    onChange={e => {
+                      setModalDept(e.target.value);
+                      setNewAllotment(prev => ({ ...prev, teacher_id: '' }));
+                    }}
+                  >
+                    <option value="All">All</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-3 space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Teacher</label>
+                  <select
+                    required
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                    value={newAllotment.teacher_id}
+                    onChange={e => setNewAllotment({...newAllotment, teacher_id: e.target.value})}
+                  >
+                    <option value="">Choose a teacher...</option>
+                    {teachers
+                      .filter(t => modalDept === 'All' || t.department === modalDept)
+                      .map(t => (
+                      <option key={t.teacher_id} value={t.teacher_id}>{t.name} ({t.teacher_id})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-1.5">
