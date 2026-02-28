@@ -106,6 +106,7 @@ def load_subjects(db: Session, user_id: str = "default_user") -> Dict[Tuple[str,
         viable_rooms_str = s.viable_rooms or ""
         subjects_data[(str(s.class_id), s.subject_id)] = {
             'name': s.name,
+            'credit': s.credit,
             'duration': s.duration,
             'required_room_type': s.required_room_type or '',
             'viable_rooms': [r.strip() for r in viable_rooms_str.split(',') if r.strip()],

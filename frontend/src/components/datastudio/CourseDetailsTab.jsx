@@ -15,6 +15,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
     subject_id: '',
     dept: 'ME',
     name: '',
+    credit: 3.0,
     duration: 1,
     required_room_type: 'Theory',
     viable_rooms: '',
@@ -108,6 +109,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
         subject_id: '',
         dept: departments[0] || 'ME',
         name: '',
+        credit: 3.0,
         duration: 1,
         required_room_type: 'Theory',
         viable_rooms: '',
@@ -230,6 +232,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Course ID</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Dept</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Course Name</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Credit</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Duration</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Type</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Viable Rooms</th>
@@ -263,6 +266,7 @@ function CourseDetailsTab({ activeTerms = [] }) {
                       <td className="px-6 py-4 font-mono text-sm font-semibold text-primary">{subject.subject_id}</td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-600">{subject.dept}</td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-900">{subject.name}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-600">{(subject.credit || 0).toFixed(2)}</td>
                       <td className="px-6 py-4 text-sm text-slate-500">{subject.duration} periods</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={cn(
@@ -340,6 +344,18 @@ function CourseDetailsTab({ activeTerms = [] }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Credit</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={newSubject.credit}
+                    onChange={e => setNewSubject({...newSubject, credit: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Duration (Periods)</label>
                   <input
                     required
@@ -350,6 +366,9 @@ function CourseDetailsTab({ activeTerms = [] }) {
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Room Type</label>
                   <select
