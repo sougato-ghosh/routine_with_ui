@@ -47,6 +47,38 @@ function Settings() {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  const LABEL_MAP = {
+    'days_num': 'NUMBER OF DAYS',
+    'periods_num': 'NUMBER OF PERIODS',
+    'show_break': 'SHOW BREAK IN ROUTINE',
+    'break_period': 'BREAK TO BE SHOWN AFTER PERIOD'
+  };
+
+  const SETTING_ORDER = [
+    'days_num',
+    'periods_num',
+    'show_break',
+    'break_period',
+    'theory_allowed_periods',
+    'lab_allowed_periods',
+    'day_labels',
+    'period_labels',
+    'period_times',
+    'break_time_label',
+    'sections',
+    'seniority_levels',
+    'departments'
+  ];
+
+  // Whitelisted keys plus any other keys present in settings (except restricted ones)
+  const displayKeys = [
+    ...SETTING_ORDER.filter(key => settings.hasOwnProperty(key)),
+    ...Object.keys(settings).filter(key =>
+      !SETTING_ORDER.includes(key) &&
+      key !== 'footer_right_text'
+    )
+  ];
+
   return (
     <div className="flex flex-col">
       <header className="mb-8">
@@ -85,19 +117,35 @@ function Settings() {
             </div>
           ) : (
             <div className="max-w-md space-y-6">
-              {Object.keys(settings)
-                .filter(key => key !== 'footer_right_text')
+              {displayKeys
                 .map(key => (
                   <div key={key}>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                      {key.replace(/_/g, ' ')}
+                      {LABEL_MAP[key] || key.replace(/_/g, ' ')}
                     </label>
-                    <input
-                      type="text"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
-                      value={settings[key] || ''}
-                      onChange={(e) => handleEdit(key, e.target.value)}
-                    />
+                    {key === 'show_break' ? (
+                      <button
+                        onClick={() => handleEdit(key, settings[key] === 'true' ? 'false' : 'true')}
+                        className={cn(
+                          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                          settings[key] === 'true' ? "bg-primary" : "bg-slate-200"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                            settings[key] === 'true' ? "translate-x-6" : "translate-x-1"
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                        value={settings[key] || ''}
+                        onChange={(e) => handleEdit(key, e.target.value)}
+                      />
+                    )}
                   </div>
                 ))}
             </div>

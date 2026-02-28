@@ -67,6 +67,7 @@ init_db()
 DEFAULT_SETTINGS = {
     "days_num": "5",
     "periods_num": "9",
+    "show_break": "true",
     "break_period": "6",
     "theory_allowed_periods": "1,2,3,4,5",
     "lab_allowed_periods": "1,4,7",
@@ -450,6 +451,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
     # Build the grid (reusing logic from main.py's former create_output_tables)
     periods_num = int(settings.get('periods_num', 9))
     days_num = int(settings.get('days_num', 5))
+    show_break = settings.get('show_break', 'true') == 'true'
     break_period = int(settings.get('break_period', 6))
 
     period_labels = settings.get('period_labels', "").split(',')
@@ -476,7 +478,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
             "classes": [],
             "content": []
         })
-        if p == break_period:
+        if show_break and p == break_period:
             header.append({
                 "text": f"Break {settings.get('break_time_label', '')}",
                 "is_header": True,
@@ -536,7 +538,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
                     })
                     covered_periods.add(p)
 
-            if p == break_period:
+            if show_break and p == break_period:
                 row.append({
                     "text": "",
                     "is_header": False,
