@@ -71,9 +71,7 @@ def write_csv(path: str, header: List[str], rows: List[List]):
 # ------------------------------
 
 def load_settings(db: Session, user_id: str = "default_user") -> Dict[str, str]:
-    info = {
-        'session_name': 'January 2025',
-    }
+    info = {}
     settings = db.query(Setting).filter(Setting.user_id == user_id).all()
     for s in settings:
         if s.key != 'footer_right_text':

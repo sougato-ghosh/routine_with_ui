@@ -77,10 +77,12 @@ function Settings() {
     'days_num': 'NUMBER OF DAYS',
     'periods_num': 'NUMBER OF PERIODS',
     'show_break': 'SHOW BREAK IN ROUTINE',
-    'break_period': 'BREAK TO BE SHOWN AFTER PERIOD'
+    'break_period': 'BREAK TO BE SHOWN AFTER PERIOD',
+    'session_name': 'SESSION NAME (e.g. January 2025)'
   };
 
   const SETTING_ORDER = [
+    'session_name',
     'days_num',
     'periods_num',
     'show_break',
