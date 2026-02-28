@@ -153,7 +153,8 @@ MODEL_MAP = {
     "subjects_of_all_semester": SubjectOfAllSemester,
     "terms": Term,
     "schedules": Schedule,
-    "schedule_assignments": ScheduleAssignment
+    "schedule_assignments": ScheduleAssignment,
+    "settings": Setting
 }
 
 def to_dict(obj):

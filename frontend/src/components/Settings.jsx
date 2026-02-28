@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getSettings, updateSettings } from '../api';
+import React, { useState, useEffect, useRef } from 'react';
+import { getSettings, updateSettings, importCSV, exportCSV } from '../api';
 import { Check } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -8,6 +8,7 @@ function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadSettings();
@@ -45,6 +46,31 @@ function Settings() {
 
   const handleEdit = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setLoading(true);
+        await importCSV('settings', file);
+        await loadSettings();
+        alert('Settings imported successfully');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to import settings');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleExport = () => {
+    exportCSV('settings');
   };
 
   const LABEL_MAP = {
@@ -100,14 +126,39 @@ function Settings() {
             <h2 className="text-xl font-bold text-slate-900">Global Settings</h2>
             <p className="text-slate-500 text-sm mt-1">Configure general session parameters for the routine generator.</p>
           </div>
-          <button
-            onClick={handleSaveSettings}
-            disabled={saving || loading}
-            className="flex items-center gap-2 bg-primary hover:opacity-90 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md shadow-primary/30 transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            <span className="material-icons text-lg">save</span>
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".csv"
+              className="hidden"
+            />
+            <button
+              onClick={handleImportClick}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base">file_upload</span>
+              Import CSV
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base">file_download</span>
+              Export CSV
+            </button>
+            <button
+              onClick={handleSaveSettings}
+              disabled={saving || loading}
+              className="flex items-center gap-2 bg-primary hover:opacity-90 text-white px-6 py-2.5 rounded-lg font-semibold shadow-md shadow-primary/30 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              <span className="material-icons text-lg">save</span>
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
         </div>
 
         <div className="p-8">
