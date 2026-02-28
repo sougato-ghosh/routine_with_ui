@@ -321,6 +321,7 @@ def run_scheduler(db: Session = Depends(get_db), current_user: User = Depends(ge
         schedule_name = data['settings_snapshot'].get('session_name', f"Schedule {now}")
 
         new_schedule = Schedule(
+            user_id=current_user.username,
             name=schedule_name,
             created_at=now,
             settings_snapshot=json.dumps(data['settings_snapshot'])
@@ -331,6 +332,7 @@ def run_scheduler(db: Session = Depends(get_db), current_user: User = Depends(ge
         # Create assignments
         for assign in data['assignments']:
             db.add(ScheduleAssignment(
+                user_id=current_user.username,
                 schedule_id=new_schedule.id,
                 session_id=assign['session_id'],
                 class_id=assign['class_id'],
