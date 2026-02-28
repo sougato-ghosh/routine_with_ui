@@ -7,6 +7,7 @@ function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [seniorityLevels, setSeniorityLevels] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [selectedDept, setSelectedDept] = useState('All');
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,8 +137,12 @@ function Teachers() {
   };
 
   if (selectedTeacher) {
-    return <TeacherProfile teacher={selectedTeacher} onBack={() => { setSelectedTeacher(null); fetchTeachers(); }} />;
+    return <TeacherProfile teacher={selectedTeacher} onBack={() => { setSelectedTeacher(null); setSelectedDept('All'); fetchTeachers(); }} />;
   }
+
+  const filteredTeachers = selectedDept === 'All'
+    ? teachers
+    : teachers.filter(t => t.department === selectedDept);
 
   return (
     <div className="flex flex-col">
@@ -148,9 +153,28 @@ function Teachers() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[750px] max-h-[calc(100vh-200px)]">
         <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-white">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Faculty List</h2>
-            <p className="text-sm text-slate-500 mt-1">Total: {teachers.length} Active Faculty Members</p>
+          <div className="flex items-center gap-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Faculty List</h2>
+              <p className="text-sm text-slate-500 mt-1">Total: {teachers.length} Active Faculty Members</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="deptFilter" className="text-sm font-semibold text-slate-700">Filter by Department:</label>
+              <select
+                id="deptFilter"
+                value={selectedDept}
+                onChange={(e) => {
+                  setSelectedDept(e.target.value);
+                  setSelectedIds([]);
+                }}
+                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white font-medium text-slate-700"
+              >
+                <option value="All">All Departments</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <input
@@ -199,7 +223,7 @@ function Teachers() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            teachers.map((teacher) => (
+            filteredTeachers.map((teacher) => (
               <button
                 key={teacher.teacher_id}
                 onClick={() => setSelectedTeacher(teacher)}
