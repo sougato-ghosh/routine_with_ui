@@ -6,24 +6,23 @@ export function generatePrintHTML(data) {
   const css = `
     <style>
       @page { size: A4 landscape; margin: 10mm; }
-      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: white; color: black; }
-      .header-title { text-align: center; font-size: 14pt; margin-top: 5mm; }
-      .class-title { text-align: center; font-size: 36pt; font-weight: bold; margin-bottom: 2mm; }
-      .home-room { text-align: right; font-size: 12pt; margin-right: 5mm; margin-bottom: 2mm; font-weight: bold; }
-      .timetable { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      .timetable th, .timetable td { border: 1px solid black; text-align: center; vertical-align: middle; padding: 4px; height: 80px; position: relative; }
-      .timetable th { height: auto; background-color: #f8f8f8; }
-      .day-label { font-size: 24pt; font-weight: bold; width: 80px; }
-      .period-header { font-size: 12pt; font-weight: bold; }
-      .time-header { font-size: 9pt; font-weight: normal; }
-      .subject-id { font-size: 16pt; font-weight: 800; display: block; margin-bottom: 2mm; }
-      .teacher-id { font-size: 9pt; font-weight: 600; position: absolute; bottom: 4px; right: 4px; }
-      .room-info { font-size: 9pt; font-weight: 600; position: absolute; bottom: 4px; left: 4px; }
-      .break-cell { font-size: 12pt; font-weight: bold; width: 35px; background-color: #f9f9f9; }
-      .footer { margin-top: 8mm; font-size: 10pt; font-weight: bold; border-top: 1px solid #eee; padding-top: 2mm; }
-      .footer-left { float: left; margin-left: 5mm; }
-      .footer-right { float: right; margin-right: 5mm; }
-      .clearfix::after { content: ""; clear: both; display: table; }
+      body { font-family: Arial, sans-serif; }
+        .timetable { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        .timetable th, .timetable td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; height: 80px; position: relative; }
+        .period-header { font-size: 14px; font-weight: bold; }
+        .time-header { font-size: 10px; font-weight: normal; }
+        .day-label { font-size: 40px; font-weight: normal; width: 80px; }
+        .subject-id { font-size: 18px; font-weight: normal; display: block; margin-bottom: 5px; }
+        .teacher-id { font-size: 10px; position: absolute; bottom: 5px; right: 5px; }
+        .room-info { font-size: 10px; position: absolute; bottom: 5px; left: 5px; }
+        .break-cell { width: 40px; }
+        .home-room { text-align: right; font-size: 14px; margin-bottom: 5px; }
+        .header-title { text-align: center; margin-bottom: 0; }
+        .class-title { text-align: center; font-size: 48px; margin-top: 0; margin-bottom: 10px; }
+        .footer { width: 100%; margin-top: 20px; font-size: 12px; }
+        .footer-left { float: left; }
+        .footer-right { float: right; }
+        .clearfix::after { content: ""; clear: both; display: table; }
 
       /* Vertical text for break */
       .break-text {
