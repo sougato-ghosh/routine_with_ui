@@ -430,7 +430,8 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
     # Get current session name from settings instead of snapshot
     curr_settings = db.query(Setting).filter(Setting.user_id == current_user.username).all()
     settings_dict = {s.key: s.value for s in curr_settings}
-    header_title = settings_dict.get('session_name', schedule.name)
+    session_name = settings_dict.get('session_name', schedule.name)
+    header_title = f"Final Term Routine (Term: {session_name})"
 
     settings = json.loads(schedule.settings_snapshot)
     home_room_map = settings.get('home_room_map', {})
@@ -447,10 +448,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
         if class_info and class_info.name:
             title = class_info.name
         else:
-            if len(id) >= 2 and id[0].isdigit() and id[1].isdigit():
-                title = f"{id[0]}-{id[1]}"
-            else:
-                title = id
+            title = format_class_name(id)
 
         hr_id = home_room_map.get(id, "")
         hr_display = f"R#{hr_id}" if hr_id else ""
@@ -572,7 +570,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
             "header_title": header_title,
             "class_title": title,
             "home_room": hr_display,
-            "footer_left": f"Generated: {schedule.created_at}",
+            "footer_left": f"Timetable generated:{datetime.now().strftime('%d/%m/%Y')}",
             "footer_right": "Cadence"
         },
         "table": table
