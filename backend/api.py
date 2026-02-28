@@ -7,6 +7,7 @@ import io
 import csv
 import main
 import data_validator
+import pdf_utils
 from typing import List, Dict, Any
 import json
 from datetime import datetime
@@ -576,6 +577,21 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
         },
         "table": table
     }
+
+@app.get("/schedules/{schedule_id}/export")
+def export_schedule_pdf(schedule_id: int, type: str, id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Re-use the view_schedule logic to get data
+    data = view_schedule(schedule_id, type, id, db, current_user)
+
+    # Generate PDF
+    pdf_buffer = pdf_utils.generate_routine_pdf(data)
+
+    filename = f"Routine_{id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 if __name__ == "__main__":
     import uvicorn

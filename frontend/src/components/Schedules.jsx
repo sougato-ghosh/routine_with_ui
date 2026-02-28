@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getSchedules, getSchedule, viewSchedule, deleteSchedule, deleteAllSchedules, importCSV, exportCSV } from '../api';
+import { getSchedules, getSchedule, viewSchedule, deleteSchedule, deleteAllSchedules, importCSV, exportCSV, exportSchedulePDF } from '../api';
 import TimetableGrid from './TimetableGrid';
 
 function Schedules() {
@@ -251,7 +251,7 @@ function Schedules() {
                    Delete Version
                  </button>
                  <button
-                   onClick={() => window.print()}
+                   onClick={() => exportSchedulePDF(selectedScheduleId, viewType, selectedItem)}
                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-slate-200 active:scale-95"
                  >
                    <span className="material-icons text-sm">download</span>

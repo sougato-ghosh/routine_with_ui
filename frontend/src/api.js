@@ -64,6 +64,19 @@ export const getSchedule = (id) => api.get(`/schedules/${id}`);
 export const deleteSchedule = (id) => api.delete(`/schedules/${id}`);
 export const deleteAllSchedules = () => api.delete('/schedules');
 export const viewSchedule = (scheduleId, type, id) => api.get(`/schedules/${scheduleId}/view`, { params: { type, id } });
+export const exportSchedulePDF = async (scheduleId, type, id) => {
+    const response = await api.get(`/schedules/${scheduleId}/export`, {
+        params: { type, id },
+        responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Routine_${id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+};
 
 // Database-specific endpoints
 export const getSettings = () => api.get('/settings');
