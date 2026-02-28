@@ -8,7 +8,12 @@ import os
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # JWT configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-for-development")
+# In production, ALWAYS set JWT_SECRET_KEY environment variable.
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    if os.getenv("NODE_ENV") == "production" or os.getenv("RENDER") == "true":
+        raise RuntimeError("JWT_SECRET_KEY must be set in production environment")
+    SECRET_KEY = "your-secret-key-for-development"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 3
