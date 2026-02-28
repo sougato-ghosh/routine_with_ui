@@ -29,24 +29,6 @@ function DataStudio() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab, loadData]);
-
-  useEffect(() => {
-    const fetchSavedTerms = async () => {
-      try {
-        const res = await getData('terms');
-        const active = res.data.filter(t => t.is_active).map(t => t.name);
-        setActiveTerms(active);
-        setSavedActiveTerms(active);
-      } catch (err) {
-        console.error("Failed to load saved terms", err);
-      }
-    };
-    fetchSavedTerms();
-  }, []);
-
   const loadData = React.useCallback(async () => {
     try {
       if (activeTab === 'terms') {
@@ -79,6 +61,24 @@ function DataStudio() {
       console.error("Failed to load data", err);
     }
   }, [activeTab, selectedCourse]);
+
+  useEffect(() => {
+    loadData();
+  }, [activeTab, loadData]);
+
+  useEffect(() => {
+    const fetchSavedTerms = async () => {
+      try {
+        const res = await getData('terms');
+        const active = res.data.filter(t => t.is_active).map(t => t.name);
+        setActiveTerms(active);
+        setSavedActiveTerms(active);
+      } catch (err) {
+        console.error("Failed to load saved terms", err);
+      }
+    };
+    fetchSavedTerms();
+  }, []);
 
   const showToast = (msg) => {
     setToast(msg);
