@@ -75,6 +75,7 @@ DEFAULT_SETTINGS = {
     "period_labels": "1st,2nd,3rd,4th,5th,6th,7th,8th,9th",
     "period_times": "8:00-8:50,9:00-9:50,10:00-10:50,11:00-11:50,12:00-12:50,1:00-1:30,2:00-2:50,3:00-3:50,4:00-4:50",
     "break_time_label": "1:30 - 2:00",
+    "session_name": "January 2025",
     "sections": "A,B,C",
     "seniority_levels": "Lecturer,Assistant Professor,Associate Professor,Professor",
     "departments": "ME,CHEM,CHE,EEE,CSE,CE,IPE,MME,WRE,Math,Physics,Hum"
@@ -425,6 +426,11 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
+    # Get current session name from settings instead of snapshot
+    curr_settings = db.query(Setting).filter(Setting.user_id == current_user.username).all()
+    settings_dict = {s.key: s.value for s in curr_settings}
+    header_title = settings_dict.get('session_name', schedule.name)
+
     settings = json.loads(schedule.settings_snapshot)
     home_room_map = settings.get('home_room_map', {})
 
@@ -435,8 +441,16 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
             ScheduleAssignment.user_id == current_user.username
         ).all()
         class_info = db.query(Class).filter(Class.class_id == id, Class.user_id == current_user.username).first()
-        class_name = class_info.name if class_info else id
-        title = format_class_name(id)
+
+        # Fallback to L-T format if class name is missing
+        if class_info and class_info.name:
+            title = class_info.name
+        else:
+            if len(id) >= 2 and id[0].isdigit() and id[1].isdigit():
+                title = f"{id[0]}-{id[1]}"
+            else:
+                title = id
+
         hr_id = home_room_map.get(id, "")
         hr_display = f"R#{hr_id}" if hr_id else ""
     elif type == 'teacher':
@@ -554,7 +568,7 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
 
     return {
         "metadata": {
-            "header_title": f"Routine Hub - {schedule.name}",
+            "header_title": header_title,
             "class_title": title,
             "home_room": hr_display,
             "footer_left": f"Generated: {schedule.created_at}",
