@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getSchedules, getSchedule, viewSchedule, deleteSchedule, deleteAllSchedules, importCSV, exportCSV } from '../api';
 import TimetableGrid from './TimetableGrid';
+import { generatePrintHTML } from '../printUtils';
 
 function Schedules() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -123,6 +124,35 @@ function Schedules() {
               alert('Failed to import assignments');
           }
       }
+  };
+
+  const handlePrint = () => {
+    if (!gridData) return;
+
+    const printHTML = generatePrintHTML(gridData);
+
+    // Create hidden iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(printHTML);
+    doc.close();
+
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+        iframe.contentWindow.print();
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 1000);
+    }, 500);
   };
 
   return (
@@ -251,7 +281,7 @@ function Schedules() {
                    Delete Version
                  </button>
                  <button
-                   onClick={() => window.print()}
+                   onClick={handlePrint}
                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-slate-200 active:scale-95"
                  >
                    <span className="material-icons text-sm">download</span>
