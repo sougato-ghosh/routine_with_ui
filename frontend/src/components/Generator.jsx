@@ -36,10 +36,12 @@ function Generator() {
             <span className="material-icons text-4xl">bolt</span>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Generate?</h3>
-          <p className="text-slate-500 mb-8">
+          <p className="text-slate-500 mb-4">
             The engine will consider all teacher constraints, room capacities, and course requirements to build your routine.
           </p>
-
+          <p className="text-xs text-slate-400 mb-8">
+            The server is running on a free-tier instance, so it may take a few moments (about 2 minutes!) to complete the scheduling process. Please be patient! Also dont change page or click the button multiple times, it may cause issues with the server.
+          </p>
           <button
             onClick={handleRun}
             disabled={status === 'running'}
