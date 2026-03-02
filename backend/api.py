@@ -94,6 +94,15 @@ def ensure_default_settings():
 
 ensure_default_settings()
 
+@app.get("/")
+def health_check(db: Session = Depends(get_db)):
+    user_count = db.query(User).count()
+    return {
+        "status": "success",
+        "message": f"Yes, server is running, there is {user_count} number of user currently registered",
+        "user_count": user_count
+    }
+
 @app.post("/register", response_model=Token)
 def register(user_data: UserAuth, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.username == user_data.username).first()
