@@ -7,11 +7,18 @@ const Auth = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setIsWakingUp(false);
+
+    const timer = setTimeout(() => {
+      setIsWakingUp(true);
+    }, 5000);
+
     try {
       const authFunc = isLogin ? login : register;
       const response = await authFunc(username, password);
@@ -22,7 +29,9 @@ const Auth = ({ onLogin }) => {
     } catch (err) {
       setError(err.response?.data?.detail || 'Authentication failed');
     } finally {
+      clearTimeout(timer);
       setLoading(false);
+      setIsWakingUp(false);
     }
   };
 
@@ -73,6 +82,12 @@ const Auth = ({ onLogin }) => {
               {loading ? 'Processing...' : (isLogin ? 'Sign in' : 'Register')}
             </button>
           </div>
+
+          {isWakingUp && (
+            <div className="mt-4 text-amber-600 text-sm text-center bg-amber-50 p-3 rounded-md border border-amber-200 animate-pulse">
+              The server is currently waking up. This may take up to 30 seconds. Thank you for your patience!
+            </div>
+          )}
         </form>
         <div className="text-center">
           <button
