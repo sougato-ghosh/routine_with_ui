@@ -94,6 +94,9 @@ def ensure_default_settings():
 
 ensure_default_settings()
 
+@app.head("/")
+def health_check_head():
+    return {"status": "ok"}
 @app.get("/")
 def health_check(db: Session = Depends(get_db)):
     user_count = db.query(User).count()
