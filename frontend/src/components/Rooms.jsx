@@ -71,7 +71,7 @@ function Rooms() {
       setNewRoom({
         room_id: '',
         name: '',
-        capacity: 40,
+        capacity: 60,
         type: 'Theory'
       });
       fetchRooms();
@@ -85,7 +85,8 @@ function Rooms() {
     <div className="flex flex-col">
       <header className="mb-8">
         <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Rooms</h1>
-        <p className="text-slate-500 mt-2">Configure and manage all physical teaching spaces.</p>
+        <p className="text-slate-500 mt-2 mb-2">Configure and manage all physical teaching spaces.</p>
+        <p className="text-xs text-slate-400 mb-8"> Number of rooms with same name must be equal to the number of sections in a term. For example, if there is 3 sections, every 3 rooms must have the same name.</p>
       </header>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[750px] max-h-[calc(100vh-200px)]">
