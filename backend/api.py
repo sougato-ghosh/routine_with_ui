@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import pandas as pd
 import os
 import io
@@ -27,7 +28,12 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+# Get the directory of the current script
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Path to the frontend build directory
+FRONTEND_DIR = os.path.join(BASE_DIR, "static")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = decode_token(token)
@@ -94,7 +100,7 @@ def ensure_default_settings():
 
 ensure_default_settings()
 
-@app.get("/")
+@app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
     user_count = db.query(User).count()
     return {
@@ -103,8 +109,8 @@ def health_check(db: Session = Depends(get_db)):
         "user_count": user_count
     }
 
-@app.post("/register", response_model=Token)
-def register(user_data: UserAuth, db: Session = Depends(get_db)):
+@app.post("/api/register", response_model=Token)
+def register_user(user_data: UserAuth, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -124,8 +130,8 @@ def register(user_data: UserAuth, db: Session = Depends(get_db)):
     refresh_token = create_refresh_token(data={"sub": new_user.username})
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-@app.post("/login", response_model=Token)
-def login(user_data: UserAuth, db: Session = Depends(get_db)):
+@app.post("/api/login", response_model=Token)
+def login_user(user_data: UserAuth, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == user_data.username).first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
@@ -134,8 +140,8 @@ def login(user_data: UserAuth, db: Session = Depends(get_db)):
     refresh_token = create_refresh_token(data={"sub": user.username})
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-@app.post("/refresh", response_model=Token)
-def refresh(refresh_data: RefreshRequest, db: Session = Depends(get_db)):
+@app.post("/api/refresh", response_model=Token)
+def refresh_token(refresh_data: RefreshRequest, db: Session = Depends(get_db)):
     payload = decode_token(refresh_data.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -184,7 +190,7 @@ def clean_data(item, model):
         if k in model.__table__.columns and k not in ['id', 'user_id']
     }
 
-@app.get("/overview")
+@app.get("/api/overview")
 def get_overview(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return {
         "teachers": db.query(Teacher).filter(Teacher.user_id == current_user.username).count(),
@@ -193,7 +199,7 @@ def get_overview(db: Session = Depends(get_db), current_user: User = Depends(get
         "load": db.query(Curriculum).filter(Curriculum.user_id == current_user.username).count(),
     }
 
-@app.get("/data/{table_name}")
+@app.get("/api/data/{table_name}")
 def get_data(table_name: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -201,7 +207,7 @@ def get_data(table_name: str, db: Session = Depends(get_db), current_user: User 
     items = db.query(model).filter(model.user_id == current_user.username).all()
     return [to_dict(item) for item in items]
 
-@app.post("/data/{table_name}")
+@app.post("/api/data/{table_name}")
 def update_data(table_name: str, data: List[Dict[Any, Any]], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -227,7 +233,7 @@ def update_data(table_name: str, data: List[Dict[Any, Any]], db: Session = Depen
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return {"status": "success"}
 
-@app.get("/export/{table_name}")
+@app.get("/api/export/{table_name}")
 def export_data(table_name: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -253,7 +259,7 @@ def export_data(table_name: str, db: Session = Depends(get_db), current_user: Us
         headers={"Content-Disposition": f"attachment; filename={table_name}.csv"}
     )
 
-@app.post("/import/{table_name}")
+@app.post("/api/import/{table_name}")
 async def import_data(table_name: str, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if table_name not in MODEL_MAP:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -299,12 +305,12 @@ async def import_data(table_name: str, file: UploadFile = File(...), db: Session
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return {"status": "success"}
 
-@app.get("/settings")
+@app.get("/api/settings")
 def get_settings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     settings = db.query(Setting).filter(Setting.user_id == current_user.username).all()
     return {s.key: s.value for s in settings if s.key != 'footer_right_text'}
 
-@app.post("/settings")
+@app.post("/api/settings")
 def update_settings(data: Dict[str, str], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     for k, v in data.items():
         setting = db.query(Setting).filter(Setting.key == k, Setting.user_id == current_user.username).first()
@@ -315,12 +321,12 @@ def update_settings(data: Dict[str, str], db: Session = Depends(get_db), current
     db.commit()
     return {"status": "success"}
 
-@app.get("/validate")
-def validate_data(current_user: User = Depends(get_current_user)):
+@app.get("/api/validate")
+def validate_data_endpoint(current_user: User = Depends(get_current_user)):
     issues = data_validator.validate_data(user_id=current_user.username)
     return issues
 
-@app.post("/run-scheduler")
+@app.post("/api/run-scheduler")
 def run_scheduler(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     data_validator.validate_data(user_id=current_user.username)
     res = main.run(user_id=current_user.username)
@@ -372,7 +378,7 @@ def run_scheduler(db: Session = Depends(get_db), current_user: User = Depends(ge
         "result": res
     }
 
-@app.delete("/schedules/{schedule_id}")
+@app.delete("/api/schedules/{schedule_id}")
 def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id, Schedule.user_id == current_user.username).first()
     if not schedule:
@@ -381,7 +387,7 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), current_use
     db.commit()
     return {"status": "success"}
 
-@app.delete("/schedules")
+@app.delete("/api/schedules")
 def delete_all_schedules(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         # Explicitly delete assignments first, then schedules to handle any potential FK issues
@@ -393,7 +399,7 @@ def delete_all_schedules(db: Session = Depends(get_db), current_user: User = Dep
         raise HTTPException(status_code=500, detail=f"Failed to delete all schedules: {str(e)}")
     return {"status": "success"}
 
-@app.get("/schedules")
+@app.get("/api/schedules")
 def list_schedules(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     schedules = db.query(Schedule).filter(Schedule.user_id == current_user.username).order_by(Schedule.id.desc()).all()
     return [{
@@ -402,7 +408,7 @@ def list_schedules(db: Session = Depends(get_db), current_user: User = Depends(g
         "created_at": s.created_at
     } for s in schedules]
 
-@app.get("/schedules/{schedule_id}")
+@app.get("/api/schedules/{schedule_id}")
 def get_schedule(schedule_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id, Schedule.user_id == current_user.username).first()
     if not schedule:
@@ -429,7 +435,7 @@ def format_class_name(class_id: str) -> str:
         return f"ME L-{level}/T-{term} (Sec {sec})"
     return f"ME {class_id}"
 
-@app.get("/schedules/{schedule_id}/view")
+@app.get("/api/schedules/{schedule_id}/view")
 def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id, Schedule.user_id == current_user.username).first()
     if not schedule:
@@ -585,6 +591,28 @@ def view_schedule(schedule_id: int, type: str, id: str, db: Session = Depends(ge
         },
         "table": table
     }
+
+# Mount static files (Frontend)
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # If the path starts with api/, it should have been handled by other routes
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404)
+
+        # Check if the file exists in the static directory
+        file_path = os.path.join(FRONTEND_DIR, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+
+        # Fallback to index.html for SPA routing
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+else:
+    @app.get("/")
+    def read_root():
+        return {"message": "Frontend not found. Please run build."}
 
 if __name__ == "__main__":
     import uvicorn

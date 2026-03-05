@@ -10,3 +10,4 @@ passlib[bcrypt]
 psycopg2-binary
 gunicorn
 dotenv
+aiofiles

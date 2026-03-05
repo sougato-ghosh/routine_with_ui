@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// For production, we want to use the same host as the frontend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (window.location.origin + '/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -23,7 +24,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response.status === 401 && !originalRequest._retry) {
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
@@ -69,7 +70,6 @@ export const viewSchedule = (scheduleId, type, id) => api.get(`/schedules/${sche
 export const getSettings = () => api.get('/settings');
 export const updateSettings = (data) => api.post('/settings', data);
 export const exportCSV = async (tableName) => {
-    const token = localStorage.getItem('access_token');
     const response = await api.get(`/export/${tableName}`, { responseType: 'blob' });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
