@@ -76,8 +76,11 @@ function Sidebar({ currentTab, setCurrentTab }) {
         ))}
       </nav>
       <div className="mt-auto px-6 py-4 border-t border-slate-100/50">
-        <p className="text-[10px] text-slate-400 font-medium tracking-wide">
-          Developed by <span className="text-slate-500 font-bold italic">aunkur</span>
+        <p className="text-xs text-slate-400 font-medium tracking-wide">
+          Developed by BUET ME’24 · C1 Group 1
+        </p>
+        <p className="text-xs text-slate-300 font-bold italic">
+          Imran · Zihad · Ananno · Ruhan · Tasfiyah · Aunkur
         </p>
       </div>
     </aside>

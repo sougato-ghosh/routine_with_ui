@@ -85,7 +85,7 @@ const Auth = ({ onLogin }) => {
 
           {isWakingUp && (
             <div className="mt-4 text-amber-600 text-sm text-center bg-amber-50 p-3 rounded-md border border-amber-200 animate-pulse">
-              The server is currently waking up. This may take up to 30 seconds. Thank you for your patience!
+              The server is currently waking up. This may take up to 30-60 seconds. Thank you for your patience!
             </div>
           )}
         </form>
@@ -100,7 +100,10 @@ const Auth = ({ onLogin }) => {
       </div>
       <div className="absolute bottom-8 w-full text-center">
         <p className="text-xs text-slate-400 font-medium tracking-wide">
-          Developed by <span className="text-slate-500 font-bold italic">aunkur</span>
+          Developed by BUET ME’24 · C1 Group 1
+        </p>
+        <p className="text-xs text-slate-400 font-bold italic">
+          Imran · Zihad · Ananno · Ruhan · Tasfiyah · Aunkur
         </p>
       </div>
     </div>
