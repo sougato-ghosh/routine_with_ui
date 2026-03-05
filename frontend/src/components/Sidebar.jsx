@@ -23,11 +23,37 @@ function Sidebar({ currentTab, setCurrentTab }) {
 
   return (
     <aside className="w-64 bg-sidebar border-r border-slate-200 flex flex-col fixed top-0 h-screen z-40">
-      <div className="p-6 flex items-center gap-2">
+      <div className="p-6 pb-4 flex items-center gap-2">
         <span className="material-icons text-primary text-3xl">school</span>
         <h1 className="text-2xl font-bold tracking-tight text-slate-800">Cadence</h1>
       </div>
-      <nav className="flex-1 px-4 space-y-2 mt-4">
+
+      <div className="px-4 mb-4 relative group">
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all cursor-pointer">
+          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="material-icons text-primary text-xl">person</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-700 truncate">{username}</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">User Account</p>
+          </div>
+          <span className="material-icons text-slate-400 text-sm">expand_more</span>
+        </div>
+
+        <div className="absolute left-4 right-4 top-full pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 transition-colors text-sm font-medium"
+            >
+              <span className="material-icons text-[18px]">logout</span>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 px-4 space-y-1">
         {menuItems.map((item) => (
           <button
             key={item.name}
@@ -49,18 +75,10 @@ function Sidebar({ currentTab, setCurrentTab }) {
           </button>
         ))}
       </nav>
-      <div className="mt-auto border-t border-slate-200 p-4">
-        <div className="flex items-center gap-3 px-4 py-2 mb-2">
-          <span className="material-icons text-slate-400">account_circle</span>
-          <span className="text-sm font-medium text-slate-700 truncate">{username}</span>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all font-medium text-red-600 hover:bg-red-50"
-        >
-          <span className="material-icons text-[22px]">logout</span>
-          <span>Logout</span>
-        </button>
+      <div className="mt-auto px-6 py-4 border-t border-slate-100/50">
+        <p className="text-[10px] text-slate-400 font-medium tracking-wide">
+          Developed by <span className="text-slate-500 font-bold italic">aunkur</span>
+        </p>
       </div>
     </aside>
   );

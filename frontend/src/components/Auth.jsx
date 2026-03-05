@@ -27,8 +27,8 @@ const Auth = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg relative">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
@@ -82,6 +82,11 @@ const Auth = ({ onLogin }) => {
             {isLogin ? "Don't have an account? Register" : 'Already have an account? Sign in'}
           </button>
         </div>
+      </div>
+      <div className="absolute bottom-8 w-full text-center">
+        <p className="text-xs text-slate-400 font-medium tracking-wide">
+          Developed by <span className="text-slate-500 font-bold italic">aunkur</span>
+        </p>
       </div>
     </div>
   );
