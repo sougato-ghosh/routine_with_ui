@@ -32,17 +32,19 @@ xcopy /E /Y frontend\dist\* backend\static\
 
 echo Creating Executable...
 :: Create a single folder bundle for better stability with OR-Tools and other native libs
-pyinstaller --noconfirm --onedir --windowed ^
-    --add-data "backend;backend" ^
-    --add-data "backend/static;backend/static" ^
-    --hidden-import "uvicorn.protocols.http.httptools_impl" ^
-    --hidden-import "uvicorn.protocols.http.h11_impl" ^
-    --hidden-import "uvicorn.protocols.websockets.websockets_impl" ^
-    --hidden-import "uvicorn.protocols.websockets.wsproto_impl" ^
-    --hidden-import "uvicorn.loop.auto" ^
-    --hidden-import "uvicorn.loop.asyncio" ^
-    --hidden-import "uvicorn.logging" ^
+pyinstaller --noconfirm --onedir ^
     --name "Cadence" ^
+    --add-data "backend;backend" ^
+    --add-data "backend/static:backend/static" ^
+    --collect-all fastapi ^
+    --hidden-import pandas ^
+    --collect-all uvicorn ^
+    --collect-all ortools ^
+    --collect-all sqlalchemy ^
+    --collect-all beautifulsoup4 ^
+    --collect-all passlib ^
+    --collect-all jose ^
+    --collect-all aiofiles ^
     launcher.py
 
 echo.
