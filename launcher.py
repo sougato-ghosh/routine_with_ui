@@ -6,6 +6,8 @@ import threading
 import uvicorn
 import time
 
+print("Launching Cadence. Please wait while the server starts and the browser opens.")
+
 def find_free_port():
     """Finds a free port on localhost."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
